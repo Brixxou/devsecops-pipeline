@@ -570,6 +570,13 @@ async function fetchPipeline() {
           setStatus(el, job.conclusion, job.status);
           const durEl = document.getElementById('dur-' + elId.replace('job-', ''));
           if (durEl) durEl.textContent = job.started_at ? fmtDuration(job.started_at, job.completed_at) : '';
+
+          // Auto expand/collapse: open if in_progress, close otherwise
+          if (job.status === 'in_progress') {
+            if (!el.classList.contains('expanded')) el.classList.add('expanded');
+          } else {
+            el.classList.remove('expanded');
+          }
         }
       }
     }
@@ -577,9 +584,10 @@ async function fetchPipeline() {
     // Update connector lines
     updateLines(jobsData.jobs);
 
-    // Generate report when pipeline is completed
+    // Generate report when pipeline is completed + stop auto-refresh
     if (runStatus === 'completed') {
       generateReport(run, jobsData.jobs);
+      pipelineActive = false;
     }
 
   } catch (e) {
@@ -696,12 +704,12 @@ function generateReport(run, jobs) {
     </div>`;
 }
 
-// Auto-fetch on load + refresh every 15s if in_progress
+// Auto-fetch on load + refresh every 8s while pipeline is active
+let pipelineActive = true;
 fetchPipeline();
 setInterval(() => {
-  const bar = document.getElementById('statusBar');
-  if (bar && bar.textContent.includes('en cours')) fetchPipeline();
-}, 15000);
+  if (pipelineActive) fetchPipeline();
+}, 8000);
 </script>
 </body>
 </html>
