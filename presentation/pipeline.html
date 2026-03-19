@@ -172,10 +172,16 @@ pre.log .err{color:#f87171}
         <div class="tool-info">
           <strong>TruffleHog</strong> scanne chaque commit de l'historique Git pour detecter des cles API, tokens ou mots de passe exposes. Le flag <code>--only-verified</code> ne bloque que sur les secrets confirmes actifs.
         </div>
-        <pre class="log"><span class="ok">&#10003;</span> Scanning filesystem...
-<span class="ok">&#10003;</span> Found 0 verified secrets
-<span class="warn">!</span> Found 2 unverified secrets (AKIA patterns in config.php)
-<span class="ok">&#10003;</span> Exit code: 0 (only verified secrets block)</pre>
+        <pre class="log">🐷🔑🐷 TruffleHog. Unearth your secrets. 🐷🔑🐷
+
+<span class="ok">info</span>  trufflehog  scanning repo
+      base: 165f746e  head: d3a7c2e7
+<span class="ok">info</span>  trufflehog  finished scanning
+      chunks: 2, bytes: 420
+      <span class="warn">verified_secrets: 0</span>
+      <span class="warn">unverified_secrets: 0</span>
+      scan_duration: 31ms
+      trufflehog_version: 3.93.8</pre>
       </div>
     </div>
 
@@ -195,12 +201,15 @@ pre.log .err{color:#f87171}
         <div class="tool-info">
           <strong>PHP_CodeSniffer</strong> verifie la syntaxe et le style du code PHP selon le standard PSR-12. Un code propre et lisible reduit le risque de bugs et donc de vulnerabilites.
         </div>
-        <pre class="log"><span class="warn">!</span> FILE: /data/index.php
-<span class="err">ERROR</span> Line 13: Line indented incorrectly; expected 4 spaces, found 0
-<span class="err">ERROR</span> Line 39: Expected 1 space after IF keyword
-<span class="err">ERROR</span> Line 40: Opening brace should be on the same line
-<span class="warn">WARN</span>  Line 52: Whitespace found at end of line
-<span class="warn">!</span> Found 12 errors and 3 warnings (continue-on-error)</pre>
+        <pre class="log">FILE: /data/index.php
+ 13 | <span class="err">ERROR</span> | Line indented incorrectly; expected 4 spaces, found 0
+ 38 | <span class="err">ERROR</span> | Expected 1 space(s) after IF keyword; 0 found
+ 38 | <span class="err">ERROR</span> | Expected 1 space(s) after closing parenthesis
+ 40 | <span class="err">ERROR</span> | Expected at least 1 space before "="; 0 found
+ 40 | <span class="err">ERROR</span> | Expected at least 1 space after "="; 0 found
+ 56 | <span class="err">ERROR</span> | Expected 1 space after closing brace; newline found
+
+<span class="warn">Process completed with exit code 2 (continue-on-error)</span></pre>
       </div>
     </div>
   </div>
@@ -225,13 +234,22 @@ pre.log .err{color:#f87171}
         <div class="tool-info">
           <strong>Semgrep</strong> analyse le code source sans l'executer (boite blanche). Il detecte les patterns de vulnerabilites connus : injections SQL, XSS, RCE. C'est le coeur du Shift Left.
         </div>
-        <pre class="log"><span class="err">&#10007;</span> php.lang.security.injection.tainted-sql-string
-  src/index.php:42 &mdash; SQL injection via user input
-<span class="err">&#10007;</span> php.lang.security.xss.direct-echo-get
-  src/index.php:30 &mdash; XSS: echo $search without escaping (x4)
-<span class="err">&#10007;</span> php.lang.security.exec.command-injection
-  src/index.php:79 &mdash; RCE: system() with user input (x2)
-<span class="warn">!</span> 9 findings, 7 errors (continue-on-error)</pre>
+        <pre class="log">┌─────────────────────────┐
+│ <span class="err">9 Code Findings</span>         │
+└─────────────────────────┘
+<span class="err">❯❯❱</span> php.lang.security.injection.tainted-sql-string
+    src/index.php:42
+
+<span class="err"> ❯❱</span> php.lang.security.injection.tainted-exec
+    src/index.php:79
+
+<span class="err">❯❯❱</span> php.lang.security.tainted-exec
+    src/index.php:79
+
+Ran 23 rules on 2 files: <span class="err">9 findings</span>.
+ • Findings: 9 (9 blocking)
+
+<span class="warn">Process completed with exit code 1 (continue-on-error)</span></pre>
       </div>
     </div>
 
@@ -253,13 +271,16 @@ pre.log .err{color:#f87171}
           <strong>Trivy FS</strong> analyse les dependances declarees (composer.lock) et les compare avec les bases de CVE connues. Il identifie les bibliotheques obsoletes et vulnerables.
         </div>
         <pre class="log">composer.lock (composer)
-Total: 3 (HIGH: 1, CRITICAL: 2)
+Total: <span class="err">5 (HIGH: 4, CRITICAL: 1)</span>
 
-<span class="err">CRITICAL</span> phpmailer/phpmailer 5.2.18
-  CVE-2016-10033 &mdash; Remote code execution
-  CVE-2016-10045 &mdash; Mail header injection
-<span class="warn">HIGH</span>     phpmailer/phpmailer 5.2.18
-  CVE-2017-5223  &mdash; Local file disclosure</pre>
+<span class="err">CRITICAL</span> phpmailer/phpmailer v5.2.18
+  CVE-2016-10045  Remote Code Execution        Fixed: 5.2.20
+
+<span class="warn">HIGH</span>     phpmailer/phpmailer v5.2.18
+  CVE-2018-19296  Vulnerability in PHPMailer    Fixed: 5.2.27, 6.0.6
+  CVE-2020-13625  Output escaping bug           Fixed: 6.1.6
+  CVE-2021-34551  RCE via UNC paths (Windows)   Fixed: 6.5.0
+  CVE-2021-3603   Vulnerability in PHPMailer</pre>
       </div>
     </div>
   </div>
@@ -318,13 +339,19 @@ Total: 1647 (HIGH: 412, CRITICAL: 86)
         <div class="tool-info">
           <strong>OWASP ZAP</strong> lance l'application complete et la teste de l'exterieur comme un attaquant. Il detecte les vulnerabilites en runtime : XSS, injection SQL, headers manquants.
         </div>
-        <pre class="log">WARN-NEW: X-Frame-Options Header Not Set [10020]
-WARN-NEW: Missing Anti-clickjacking Header [10020]
-<span class="err">FAIL-NEW</span>: Cross Site Scripting (Reflected) [40012] x4
-<span class="err">FAIL-NEW</span>: SQL Injection [40018] x1
-<span class="warn">WARN-NEW</span>: Cookie without SameSite Attribute [10054]
-<span class="warn">WARN-NEW</span>: Server Leaks Information [10036]
-<span class="ok">PASS</span>: HTTPS check (N/A for localhost)</pre>
+        <pre class="log"><span class="warn">WARN-NEW</span>: In Page Banner Information Leak [10009] x2
+<span class="warn">WARN-NEW</span>: Missing Anti-clickjacking Header [10020] x3
+<span class="warn">WARN-NEW</span>: X-Content-Type-Options Header Missing [10021] x3
+<span class="warn">WARN-NEW</span>: User Controllable HTML Element Attribute (Potential XSS) [10031] x3
+<span class="warn">WARN-NEW</span>: Server Leaks Version via "Server" Header [10036] x5
+<span class="warn">WARN-NEW</span>: Server Leaks Info via "X-Powered-By" Header [10037] x3
+<span class="warn">WARN-NEW</span>: Content Security Policy (CSP) Not Set [10038] x4
+<span class="warn">WARN-NEW</span>: Storable and Cacheable Content [10049] x5
+<span class="warn">WARN-NEW</span>: Permissions Policy Header Not Set [10063] x5
+<span class="warn">WARN-NEW</span>: Source Code Disclosure - SQL [10099] x2
+<span class="warn">WARN-NEW</span>: Cross-Origin-Embedder-Policy Missing [90004] x9
+
+FAIL-NEW: 0  FAIL-INPROG: 0  <span class="warn">WARN-NEW: 11</span>  INFO: 0  <span class="ok">PASS: 56</span></pre>
       </div>
     </div>
   </div>
@@ -353,17 +380,70 @@ WARN-NEW: Missing Anti-clickjacking Header [10020]
         <div class="tool-info">
           <strong>Cosign (Sigstore)</strong> signe l'image Docker avec une identite OIDC liee au workflow GitHub Actions. Pas besoin de gerer des cles : la signature est verifiable publiquement et garantit l'integrite de l'image deployee.
         </div>
-        <pre class="log"><span class="ok">&#10003;</span> Pushing to ghcr.io/brixxou/devsecops-web:latest
-<span class="ok">&#10003;</span> Signing with OIDC identity...
-<span class="ok">&#10003;</span> tlog entry created with index: 84291037
-<span class="ok">&#10003;</span> Verification OK
-  Issuer: https://token.actions.githubusercontent.com
-  Subject: https://github.com/Brixxou/devsecops-pipeline</pre>
+        <pre class="log"><span class="ok">&#10003;</span> docker push ghcr.io/brixxou/devsecops-web:latest
+<span class="ok">&#10003;</span> cosign sign --yes ghcr.io/brixxou/devsecops-web:latest
+<span class="ok">&#10003;</span> tlog entry created with index: 1132882922
+
+<span class="ok">Verification for ghcr.io/brixxou/devsecops-web:latest --</span>
+  The cosign claims were validated
+  Issuer:  https://token.actions.githubusercontent.com
+  Subject: https://github.com/Brixxou/devsecops-pipeline/
+           .github/workflows/devsecops.yml@refs/heads/main
+  Repo:    Brixxou/devsecops-pipeline
+  Trigger: push
+  SHA:     d3a7c2e7dd7f7a408ed4efb6fc678bc634159a9f</pre>
       </div>
     </div>
   </div>
 
+  <!-- REPORT SECTION -->
+  <div id="report" class="report" style="display:none"></div>
+
 </div>
+
+<style>
+.report{
+  margin:3rem auto 2rem;max-width:72rem;width:100%;
+}
+.report h2{font-size:1.5rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:1.5rem;text-align:center}
+.report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));gap:1.2rem;margin-bottom:2rem}
+.report-card{
+  background:var(--bg2);border:1px solid #e2e8f0;border-radius:0.75rem;
+  padding:1.2rem 1.5rem;box-shadow:var(--shadow);
+}
+.report-card h3{font-size:0.9rem;font-weight:700;margin-bottom:0.6rem;display:flex;align-items:center;gap:0.5rem}
+.report-card .rc-icon{width:1.5rem;height:1.5rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;flex-shrink:0}
+.rc-ok{background:#d1fae5;color:var(--green)}
+.rc-warn{background:#fef3c7;color:var(--yellow)}
+.rc-err{background:#fee2e2;color:var(--red)}
+.report-card p{font-size:0.8rem;color:var(--muted);line-height:1.6;margin:0}
+.report-card .stat{font-size:1.5rem;font-weight:800;letter-spacing:-0.03em;margin:0.3rem 0}
+.report-card .stat.s-green{color:var(--green)}
+.report-card .stat.s-red{color:var(--red)}
+.report-card .stat.s-yellow{color:var(--yellow)}
+.report-card .stat.s-blue{color:var(--sea)}
+.report-card ul{list-style:none;padding:0;margin:0.5rem 0 0}
+.report-card ul li{font-size:0.78rem;padding:0.2rem 0;color:var(--text);padding-left:1rem;position:relative}
+.report-card ul li::before{content:'';position:absolute;left:0;top:0.55em;width:5px;height:5px;border-radius:50%}
+.report-card ul li.li-err::before{background:var(--red)}
+.report-card ul li.li-warn::before{background:var(--yellow)}
+.report-card ul li.li-ok::before{background:var(--green)}
+
+.summary-bar{
+  display:flex;justify-content:center;gap:2.5rem;flex-wrap:wrap;
+  background:var(--bg2);border:1px solid #e2e8f0;border-radius:0.75rem;
+  padding:1.5rem 2rem;box-shadow:var(--shadow);margin-bottom:2rem;
+}
+.summary-item{text-align:center}
+.summary-item .si-val{font-size:2rem;font-weight:800;letter-spacing:-0.04em}
+.summary-item .si-label{font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-top:0.1rem}
+
+.report-footer{
+  text-align:center;font-size:0.75rem;color:var(--dim);margin-top:1.5rem;
+  padding-top:1.5rem;border-top:1px solid #e2e8f0;
+}
+.report-footer a{color:var(--sea);text-decoration:none;font-weight:500}
+</style>
 
 <script>
 const OWNER = 'Brixxou';
@@ -479,6 +559,11 @@ async function fetchPipeline() {
     // Update connector lines
     updateLines(jobsData.jobs);
 
+    // Generate report when pipeline is completed
+    if (runStatus === 'completed') {
+      generateReport(run, jobsData.jobs);
+    }
+
   } catch (e) {
     bar.innerHTML = `<span class="status-dot" style="background:var(--red)"></span><span>Erreur : ${e.message} &mdash; API GitHub limitee sans token</span>`;
   } finally {
@@ -511,6 +596,86 @@ function updateLines(jobs) {
     if (allDone && !anyFail) line.classList.add('active');
     else if (anyFail) line.classList.add('fail');
   }
+}
+
+function generateReport(run, jobs) {
+  const el = document.getElementById('report');
+  if (!el) return;
+  el.style.display = 'block';
+
+  const totalDuration = fmtDuration(run.created_at, run.updated_at);
+  const passed = jobs.filter(j => j.conclusion === 'success').length;
+  const failed = jobs.filter(j => j.conclusion === 'failure').length;
+  const skipped = jobs.filter(j => j.conclusion === 'skipped').length;
+  const total = jobs.length;
+  const pipelineOk = run.conclusion === 'success';
+
+  // Static findings from the real pipeline run data
+  const findings = {
+    secrets: { icon: 'rc-ok', title: 'Secrets (TruffleHog)', stat: '0', statClass: 's-green', lines: [
+      { cls: 'li-ok', text: '0 secret verifie expose' },
+      { cls: 'li-warn', text: 'Scan base sur le diff entre commits' },
+      { cls: 'li-ok', text: 'TruffleHog v3.93.8 — 31ms' }
+    ]},
+    linter: { icon: 'rc-warn', title: 'Linter (PHPCS PSR-12)', stat: '6', statClass: 's-yellow', lines: [
+      { cls: 'li-err', text: '6 erreurs PSR-12 dans index.php' },
+      { cls: 'li-warn', text: 'Indentation, espaces manquants' },
+      { cls: 'li-warn', text: 'Exit code 2 (continue-on-error)' }
+    ]},
+    sast: { icon: 'rc-err', title: 'SAST (Semgrep)', stat: '9', statClass: 's-red', lines: [
+      { cls: 'li-err', text: 'Injection SQL detectee (index.php:42)' },
+      { cls: 'li-err', text: 'Execution de commande non securisee (index.php:79)' },
+      { cls: 'li-err', text: '9 findings bloquants sur 23 regles' }
+    ]},
+    sca: { icon: 'rc-err', title: 'SCA (Trivy FS)', stat: '5 CVE', statClass: 's-red', lines: [
+      { cls: 'li-err', text: '1 CRITICAL — CVE-2016-10045 (RCE phpmailer)' },
+      { cls: 'li-warn', text: '4 HIGH — phpmailer v5.2.18' },
+      { cls: 'li-err', text: 'Remediation : upgrade phpmailer >= 6.5.0' }
+    ]},
+    infra: { icon: 'rc-err', title: 'Infrastructure (Trivy Image)', stat: '1647', statClass: 's-red', lines: [
+      { cls: 'li-err', text: '86 CRITICAL + 412 HIGH vulnerabilites' },
+      { cls: 'li-err', text: 'Image php:7.2-apache (Debian 10) obsolete' },
+      { cls: 'li-warn', text: 'Remediation : upgrade vers php:8.2-apache' }
+    ]},
+    dast: { icon: 'rc-warn', title: 'DAST (ZAP Baseline)', stat: '11', statClass: 's-yellow', lines: [
+      { cls: 'li-warn', text: '11 WARN-NEW (headers, CSP, clickjacking)' },
+      { cls: 'li-ok', text: '56 tests passes, 0 FAIL' },
+      { cls: 'li-warn', text: 'XSS potentiel detecte via attributs HTML' }
+    ]},
+    sign: { icon: 'rc-ok', title: 'Signature (Cosign)', stat: 'OK', statClass: 's-green', lines: [
+      { cls: 'li-ok', text: 'Image signee via Cosign keyless (OIDC)' },
+      { cls: 'li-ok', text: 'Signature verifiee avec succes' },
+      { cls: 'li-ok', text: 'Registry : ghcr.io/brixxou/devsecops-web' }
+    ]}
+  };
+
+  let cardsHtml = '';
+  for (const [key, f] of Object.entries(findings)) {
+    const lis = f.lines.map(l => `<li class="${l.cls}">${l.text}</li>`).join('');
+    cardsHtml += `
+      <div class="report-card">
+        <h3><span class="rc-icon ${f.icon}">&#9679;</span> ${f.title}</h3>
+        <div class="stat ${f.statClass}">${f.stat}</div>
+        <p>${key === 'sign' ? 'Integrite' : 'Findings'}</p>
+        <ul>${lis}</ul>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <h2>Compte-rendu du Pipeline</h2>
+    <div class="summary-bar">
+      <div class="summary-item"><div class="si-val" style="color:${pipelineOk ? 'var(--green)' : 'var(--red)'}">${pipelineOk ? 'SUCCES' : 'ECHEC'}</div><div class="si-label">Statut global</div></div>
+      <div class="summary-item"><div class="si-val" style="color:var(--sea)">${totalDuration}</div><div class="si-label">Duree totale</div></div>
+      <div class="summary-item"><div class="si-val" style="color:var(--green)">${passed}/${total}</div><div class="si-label">Jobs passes</div></div>
+      <div class="summary-item"><div class="si-val" style="color:var(--red)">1663</div><div class="si-label">Vulnerabilites</div></div>
+      <div class="summary-item"><div class="si-val" style="color:var(--red)">5</div><div class="si-label">CVE dependances</div></div>
+      <div class="summary-item"><div class="si-val" style="color:var(--yellow)">9</div><div class="si-label">Findings SAST</div></div>
+    </div>
+    <div class="report-grid">${cardsHtml}</div>
+    <div class="report-footer">
+      Rapport genere le ${new Date().toLocaleDateString('fr-FR')} a ${new Date().toLocaleTimeString('fr-FR')} &mdash;
+      <a href="${run.html_url}" target="_blank">Voir le run #${run.run_number} sur GitHub</a>
+    </div>`;
 }
 
 // Auto-fetch on load + refresh every 15s if in_progress
