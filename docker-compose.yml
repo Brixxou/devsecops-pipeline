@@ -1,0 +1,38 @@
+services:
+  web:
+    container_name: devsecops-web
+    volumes:
+        - ./src:/var/www/html
+    build: ./src
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - devsecops_net
+
+  db:
+    container_name: devsecops-bdd
+    image: mariadb:10.5
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: myapp
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - devsecops_net
+
+  adminer:
+    container_name: devsecops-adminer
+    image: adminer
+    restart: always
+    ports:
+      - "8081:8080"
+    networks:
+      - devsecops_net
+
+networks:
+  devsecops_net:
+    driver: bridge
