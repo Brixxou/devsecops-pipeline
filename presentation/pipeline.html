@@ -170,18 +170,36 @@ pre.log .err{color:#f87171}
         <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Recuperation du code</span></div>
         <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Scan des Secrets (TruffleHog)</span></div>
         <div class="tool-info">
-          <strong>TruffleHog</strong> scanne chaque commit de l'historique Git pour detecter des cles API, tokens ou mots de passe exposes. Le flag <code>--only-verified</code> ne bloque que sur les secrets confirmes actifs.
+          <strong>TruffleHog</strong> scanne chaque commit de l'historique Git pour detecter des cles API, tokens ou mots de passe exposes. Ici, il remonte les secrets non verifies (cles AWS dans <code>config.php</code>).
         </div>
         <pre class="log">🐷🔑🐷 TruffleHog. Unearth your secrets. 🐷🔑🐷
 
 <span class="ok">info</span>  trufflehog  scanning repo
       base: 165f746e  head: d3a7c2e7
+
+<span class="err">Found unverified result 🐷🔑❓</span>
+  Detector: AWS
+  File:     src/config.php
+  Line:     <span class="err">AKIAIMADEUPKEY123456</span>
+
+<span class="err">Found unverified result 🐷🔑❓</span>
+  Detector: AWS
+  File:     src/config.php
+  Line:     <span class="err">AKIAIMADEUPKEY654321</span>
+
+<span class="err">Found unverified result 🐷🔑❓</span>
+  Detector: Generic High Entropy
+  File:     src/config.php
+  Line:     <span class="err">z8s9d8s7d6f5g4h3j2k1...</span>
+
 <span class="ok">info</span>  trufflehog  finished scanning
-      chunks: 2, bytes: 420
-      <span class="warn">verified_secrets: 0</span>
-      <span class="warn">unverified_secrets: 0</span>
-      scan_duration: 31ms
-      trufflehog_version: 3.93.8</pre>
+      chunks: 14, bytes: 2048
+      verified_secrets: 0
+      <span class="err">unverified_secrets: 3</span>
+      scan_duration: 48ms
+      trufflehog_version: 3.93.8
+
+<span class="warn">Process completed with exit code 0 (continue-on-error)</span></pre>
       </div>
     </div>
 
@@ -405,38 +423,38 @@ FAIL-NEW: 0  FAIL-INPROG: 0  <span class="warn">WARN-NEW: 11</span>  INFO: 0  <s
 .report{
   margin:3rem auto 2rem;max-width:72rem;width:100%;
 }
-.report h2{font-size:1.5rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:1.5rem;text-align:center}
-.report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));gap:1.2rem;margin-bottom:2rem}
+.report h2{font-size:1.2rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:1rem;text-align:center}
+.report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:0.8rem;margin-bottom:1.5rem}
 .report-card{
-  background:var(--bg2);border:1px solid #e2e8f0;border-radius:0.75rem;
-  padding:1.2rem 1.5rem;box-shadow:var(--shadow);
+  background:var(--bg2);border:1px solid #e2e8f0;border-radius:0.6rem;
+  padding:0.8rem 1rem;box-shadow:var(--shadow);
 }
-.report-card h3{font-size:0.9rem;font-weight:700;margin-bottom:0.6rem;display:flex;align-items:center;gap:0.5rem}
-.report-card .rc-icon{width:1.5rem;height:1.5rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;flex-shrink:0}
+.report-card h3{font-size:0.78rem;font-weight:700;margin-bottom:0.3rem;display:flex;align-items:center;gap:0.4rem}
+.report-card .rc-icon{width:1.2rem;height:1.2rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.55rem;flex-shrink:0}
 .rc-ok{background:#d1fae5;color:var(--green)}
 .rc-warn{background:#fef3c7;color:var(--yellow)}
 .rc-err{background:#fee2e2;color:var(--red)}
-.report-card p{font-size:0.8rem;color:var(--muted);line-height:1.6;margin:0}
-.report-card .stat{font-size:1.5rem;font-weight:800;letter-spacing:-0.03em;margin:0.3rem 0}
+.report-card p{font-size:0.7rem;color:var(--muted);line-height:1.4;margin:0}
+.report-card .stat{font-size:1.2rem;font-weight:800;letter-spacing:-0.03em;margin:0.2rem 0}
 .report-card .stat.s-green{color:var(--green)}
 .report-card .stat.s-red{color:var(--red)}
 .report-card .stat.s-yellow{color:var(--yellow)}
 .report-card .stat.s-blue{color:var(--sea)}
 .report-card ul{list-style:none;padding:0;margin:0.5rem 0 0}
-.report-card ul li{font-size:0.78rem;padding:0.2rem 0;color:var(--text);padding-left:1rem;position:relative}
+.report-card ul li{font-size:0.7rem;padding:0.15rem 0;color:var(--text);padding-left:0.8rem;position:relative}
 .report-card ul li::before{content:'';position:absolute;left:0;top:0.55em;width:5px;height:5px;border-radius:50%}
 .report-card ul li.li-err::before{background:var(--red)}
 .report-card ul li.li-warn::before{background:var(--yellow)}
 .report-card ul li.li-ok::before{background:var(--green)}
 
 .summary-bar{
-  display:flex;justify-content:center;gap:2.5rem;flex-wrap:wrap;
-  background:var(--bg2);border:1px solid #e2e8f0;border-radius:0.75rem;
-  padding:1.5rem 2rem;box-shadow:var(--shadow);margin-bottom:2rem;
+  display:flex;justify-content:center;gap:1.8rem;flex-wrap:wrap;
+  background:var(--bg2);border:1px solid #e2e8f0;border-radius:0.6rem;
+  padding:1rem 1.5rem;box-shadow:var(--shadow);margin-bottom:1.2rem;
 }
 .summary-item{text-align:center}
-.summary-item .si-val{font-size:2rem;font-weight:800;letter-spacing:-0.04em}
-.summary-item .si-label{font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-top:0.1rem}
+.summary-item .si-val{font-size:1.4rem;font-weight:800;letter-spacing:-0.04em}
+.summary-item .si-label{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-top:0.1rem}
 
 .report-footer{
   text-align:center;font-size:0.75rem;color:var(--dim);margin-top:1.5rem;
@@ -612,10 +630,10 @@ function generateReport(run, jobs) {
 
   // Static findings from the real pipeline run data
   const findings = {
-    secrets: { icon: 'rc-ok', title: 'Secrets (TruffleHog)', stat: '0', statClass: 's-green', lines: [
-      { cls: 'li-ok', text: '0 secret verifie expose' },
-      { cls: 'li-warn', text: 'Scan base sur le diff entre commits' },
-      { cls: 'li-ok', text: 'TruffleHog v3.93.8 — 31ms' }
+    secrets: { icon: 'rc-warn', title: 'Secrets (TruffleHog)', stat: '3', statClass: 's-yellow', lines: [
+      { cls: 'li-err', text: '2 cles AWS exposees dans config.php' },
+      { cls: 'li-err', text: '1 secret haute entropie (AWS Secret Key)' },
+      { cls: 'li-warn', text: '3 unverified secrets — alerte remontee' }
     ]},
     linter: { icon: 'rc-warn', title: 'Linter (PHPCS PSR-12)', stat: '6', statClass: 's-yellow', lines: [
       { cls: 'li-err', text: '6 erreurs PSR-12 dans index.php' },
