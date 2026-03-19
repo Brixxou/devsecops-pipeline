@@ -517,6 +517,20 @@ async function fetchPipeline() {
   try {
     // Get latest run
     const runsRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/runs?per_page=1`);
+
+    // Handle rate limit
+    const remaining = runsRes.headers.get('X-RateLimit-Remaining');
+    const resetTs = runsRes.headers.get('X-RateLimit-Reset');
+    if (remaining !== null) rateLimitRemaining = parseInt(remaining);
+
+    if (runsRes.status === 403) {
+      const resetDate = resetTs ? new Date(parseInt(resetTs) * 1000) : null;
+      const resetIn = resetDate ? Math.ceil((resetDate - new Date()) / 60000) : '?';
+      bar.innerHTML = `<span class="status-dot" style="background:var(--red)"></span><span>Rate limit GitHub atteint (60 req/h) &mdash; reset dans ~${resetIn} min</span>`;
+      pipelineActive = false;
+      return;
+    }
+
     const runsData = await runsRes.json();
 
     if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
@@ -537,10 +551,16 @@ async function fetchPipeline() {
     else if (runStatus === 'completed' && runConc === 'failure') { statusColor = 'var(--red)'; statusText = 'Pipeline terminee avec erreurs'; }
     else if (runStatus === 'in_progress') { statusColor = 'var(--yellow)'; statusText = 'Pipeline en cours...'; }
     else if (runStatus === 'queued') { statusColor = '#3b82f6'; statusText = 'Pipeline en file d\'attente'; }
-    bar.innerHTML = `<span class="status-dot" style="background:${statusColor}"></span><span>${statusText} &mdash; ${fmtDuration(run.created_at, run.updated_at)}</span>`;
+    const rlInfo = rateLimitRemaining <= 15 ? ` &mdash; <span style="color:var(--yellow)">${rateLimitRemaining} req API restantes</span>` : '';
+    bar.innerHTML = `<span class="status-dot" style="background:${statusColor}"></span><span>${statusText} &mdash; ${fmtDuration(run.created_at, run.updated_at)}${rlInfo}</span>`;
 
     // Get jobs
     const jobsRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/runs/${run.id}/jobs`);
+    if (jobsRes.status === 403) {
+      bar.innerHTML += ' <span style="color:var(--red);font-size:0.75rem">(rate limit — jobs non mis a jour)</span>';
+      pipelineActive = false;
+      return;
+    }
     const jobsData = await jobsRes.json();
 
     for (const job of jobsData.jobs) {
@@ -704,12 +724,14 @@ function generateReport(run, jobs) {
     </div>`;
 }
 
-// Auto-fetch on load + refresh every 8s while pipeline is active
+// Auto-fetch on load + refresh every 30s while pipeline is active
+// (GitHub API = 60 req/h sans token, chaque refresh = 2 req => ~15 min de live)
 let pipelineActive = true;
+let rateLimitRemaining = 60;
 fetchPipeline();
 setInterval(() => {
-  if (pipelineActive) fetchPipeline();
-}, 8000);
+  if (pipelineActive && rateLimitRemaining > 5) fetchPipeline();
+}, 30000);
 </script>
 </body>
 </html>
