@@ -1,0 +1,174 @@
+name: Pipeline DevSecOps (Fixed)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  IMAGE_NAME: devsecops-web-fixed
+  IMAGE_TAG: latest
+
+jobs:
+
+  # ------------------------------------------------------------------
+  # ETAPE 1 : SECRETS (TruffleHog)
+  # ------------------------------------------------------------------
+  check-secrets-fixed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan des Secrets (TruffleHog)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --results=verified,unverified
+        continue-on-error: true
+
+  # ------------------------------------------------------------------
+  # ETAPE 2 : LINTER (PHP_CodeSniffer)
+  # ------------------------------------------------------------------
+  check-quality-fixed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Linter PHP (PHP_CodeSniffer PSR-12)
+        run: |
+          docker run --rm -v "$(pwd)/src-fixed":/data cytopia/phpcs --standard=PSR12 --ignore=vendor/* /data
+        continue-on-error: true
+
+  # ------------------------------------------------------------------
+  # ETAPE 3 : SAST (Semgrep)
+  # ------------------------------------------------------------------
+  sast-analysis-fixed:
+    needs: [check-secrets-fixed, check-quality-fixed]
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Scan SAST (Semgrep)
+        run: semgrep scan --config=p/php --error --verbose src-fixed/
+        continue-on-error: true
+
+  # ------------------------------------------------------------------
+  # ETAPE 4 : SCA (Trivy FS)
+  # ------------------------------------------------------------------
+  sca-analysis-fixed:
+    needs: [check-secrets-fixed, check-quality-fixed]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Installation des dépendances
+        run: |
+          docker run --rm -v "$PWD/src-fixed":/app composer install --ignore-platform-reqs
+
+      - name: Scan SCA (Trivy FS)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: './src-fixed'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+  # ------------------------------------------------------------------
+  # ETAPE 5 : INFRASTRUCTURE (Trivy Image)
+  # ------------------------------------------------------------------
+  infra-analysis-fixed:
+    needs: [sast-analysis-fixed, sca-analysis-fixed]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Build de l'image Docker (fixed)
+        run: docker build -t ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} ./src-fixed
+
+      - name: Scan Infrastructure (Trivy Image)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: '${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+  # ------------------------------------------------------------------
+  # ETAPE 6 : DAST (ZAP Baseline)
+  # ------------------------------------------------------------------
+  dast-analysis-fixed:
+    needs: [infra-analysis-fixed]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Démarrage de la stack applicative (fixed)
+        run: |
+          docker compose -f docker-compose.fixed.yml up -d --build
+          echo "Attente du démarrage des services..."
+          sleep 15
+
+      - name: Scan DAST (ZAP Baseline)
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: 'http://localhost:8080'
+          rules_file_name: ''
+          allow_issue_writing: false
+        continue-on-error: true
+
+      - name: Arrêt de la stack
+        if: always()
+        run: docker compose -f docker-compose.fixed.yml down
+
+  # ------------------------------------------------------------------
+  # ETAPE 7 : SIGNATURE D'IMAGE (Cosign)
+  # ------------------------------------------------------------------
+  sign-image-fixed:
+    needs: [dast-analysis-fixed]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Installation de Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Login GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push de l'image vers GHCR
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE=ghcr.io/${OWNER}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          docker build -t $IMAGE ./src-fixed
+          docker push $IMAGE
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Signature de l'image (Cosign keyless)
+        run: cosign sign --yes ${{ env.IMAGE }}
+
+      - name: Vérification de la signature
+        run: |
+          cosign verify \
+            --certificate-identity-regexp=".*" \
+            --certificate-oidc-issuer-regexp=".*" \
+            ${{ env.IMAGE }}

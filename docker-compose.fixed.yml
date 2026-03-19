@@ -1,0 +1,34 @@
+services:
+  web:
+    container_name: devsecops-web-fixed
+    volumes:
+        - ./src-fixed:/var/www/html
+    build: ./src-fixed
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: devsecops-bdd-fixed
+      DB_NAME: myapp
+      DB_USER: appuser
+      DB_PASSWORD: apppassword
+    networks:
+      - devsecops_fixed_net
+
+  db:
+    container_name: devsecops-bdd-fixed
+    image: mariadb:11.2
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: myapp
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    volumes:
+      - ./sql-fixed/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - devsecops_fixed_net
+
+networks:
+  devsecops_fixed_net:
+    driver: bridge

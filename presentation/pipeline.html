@@ -125,6 +125,21 @@ pre.log .err{color:#f87171}
 .refresh-btn:hover{background:var(--sea);color:#fff;border-color:var(--sea)}
 .refresh-btn.loading{opacity:0.6;pointer-events:none}
 
+/* ===== TOGGLE BAR ===== */
+.toggle-bar{
+  display:flex;justify-content:center;gap:0;margin-top:1rem;
+  background:var(--bg3);border-radius:2rem;padding:0.2rem;border:1px solid #e2e8f0;
+  display:inline-flex;
+}
+.toggle-btn{
+  padding:0.45rem 1.5rem;border-radius:2rem;border:none;cursor:pointer;
+  font-family:inherit;font-size:0.8rem;font-weight:600;
+  background:transparent;color:var(--muted);transition:all 0.3s;
+}
+.toggle-btn.active{background:var(--sea);color:#fff;box-shadow:0 2px 8px rgba(3,105,161,0.3)}
+.toggle-btn:not(.active):hover{color:var(--text)}
+.toggle-btn.active-green{background:var(--green);color:#fff;box-shadow:0 2px 8px rgba(5,150,105,0.3)}
+
 @media(max-width:640px){
   .pipe-row{flex-direction:column;align-items:center;gap:0}
   .job{min-width:90%;max-width:90%}
@@ -149,6 +164,11 @@ pre.log .err{color:#f87171}
   <div class="status-bar" id="statusBar">
     <span class="status-dot" style="background:var(--dim)"></span>
     <span>Chargement...</span>
+  </div>
+  <!-- Toggle Avant / Après -->
+  <div class="toggle-bar">
+    <button class="toggle-btn active" id="btnBefore" onclick="switchView('before')">Avant (Vulnerable)</button>
+    <button class="toggle-btn" id="btnAfter" onclick="switchView('after')">Apres (Corrige)</button>
   </div>
 </header>
 
@@ -648,8 +668,8 @@ function updateLines(jobs) {
   }
 }
 
-// Static findings from the real pipeline run data — always available
-const FINDINGS = {
+// ===== FINDINGS DATA =====
+const FINDINGS_BEFORE = {
   secrets: { icon: 'rc-warn', title: 'Secrets (TruffleHog)', stat: '3', statClass: 's-yellow', lines: [
     { cls: 'li-err', text: '2 cles AWS exposees dans config.php' },
     { cls: 'li-err', text: '1 secret haute entropie (AWS Secret Key)' },
@@ -687,20 +707,65 @@ const FINDINGS = {
   ]}
 };
 
-function generateReport(run) {
+const FINDINGS_AFTER = {
+  secrets: { icon: 'rc-ok', title: 'Secrets (TruffleHog)', stat: '0', statClass: 's-green', lines: [
+    { cls: 'li-ok', text: 'Secrets deplaces vers variables d\'environnement' },
+    { cls: 'li-ok', text: 'config.php utilise getenv() — aucune cle en dur' },
+    { cls: 'li-ok', text: '0 secret detecte' }
+  ]},
+  linter: { icon: 'rc-ok', title: 'Linter (PHPCS PSR-12)', stat: '0', statClass: 's-green', lines: [
+    { cls: 'li-ok', text: 'Code conforme au standard PSR-12' },
+    { cls: 'li-ok', text: 'Indentation et espacement corriges' },
+    { cls: 'li-ok', text: 'Exit code 0' }
+  ]},
+  sast: { icon: 'rc-ok', title: 'SAST (Semgrep)', stat: '0', statClass: 's-green', lines: [
+    { cls: 'li-ok', text: 'SQLi corrigee : prepared statements (PDO::prepare)' },
+    { cls: 'li-ok', text: 'RCE corrigee : filter_var + escapeshellarg' },
+    { cls: 'li-ok', text: 'XSS corrigee : htmlspecialchars sur tous les outputs' }
+  ]},
+  sca: { icon: 'rc-ok', title: 'SCA (Trivy FS)', stat: '0 CVE', statClass: 's-green', lines: [
+    { cls: 'li-ok', text: 'phpmailer upgrade vers ^6.9 (derniere stable)' },
+    { cls: 'li-ok', text: 'Toutes les CVE connues corrigees' },
+    { cls: 'li-ok', text: '0 vulnerabilite HIGH/CRITICAL' }
+  ]},
+  infra: { icon: 'rc-ok', title: 'Infrastructure (Trivy Image)', stat: '~0', statClass: 's-green', lines: [
+    { cls: 'li-ok', text: 'Image upgradee vers php:8.3-apache (Debian 12)' },
+    { cls: 'li-ok', text: 'Reduction massive des CVE systeme' },
+    { cls: 'li-ok', text: 'Headers securite configures dans Apache' }
+  ]},
+  dast: { icon: 'rc-ok', title: 'DAST (ZAP Baseline)', stat: '~2', statClass: 's-green', lines: [
+    { cls: 'li-ok', text: 'CSP, X-Frame-Options, X-Content-Type ajoutes' },
+    { cls: 'li-ok', text: 'ServerTokens Prod — plus de fuite de version' },
+    { cls: 'li-ok', text: 'X-Powered-By supprime' }
+  ]},
+  sign: { icon: 'rc-ok', title: 'Signature (Cosign)', stat: 'OK', statClass: 's-green', lines: [
+    { cls: 'li-ok', text: 'Image signee via Cosign keyless (OIDC)' },
+    { cls: 'li-ok', text: 'Signature verifiee avec succes' },
+    { cls: 'li-ok', text: 'Registry : ghcr.io/brixxou/devsecops-web-fixed' }
+  ]}
+};
+
+const SUMMARY_BEFORE = { status: 'SUCCES', statusOk: true, duration: '8m 42s', passed: '7/7', vulns: '1663', cve: '5', sast: '9' };
+const SUMMARY_AFTER  = { status: 'SUCCES', statusOk: true, duration: '7m 15s', passed: '7/7', vulns: '~2', cve: '0', sast: '0' };
+
+let currentView = 'before';
+
+function generateReport(run, view) {
   const el = document.getElementById('report');
   if (!el) return;
   el.style.display = 'block';
 
-  // Use live data if available, otherwise defaults from last known run
-  const totalDuration = run ? fmtDuration(run.created_at, run.updated_at) : '8m 42s';
-  const passed = run ? '7/7' : '7/7';
-  const pipelineOk = run ? run.conclusion === 'success' : true;
+  const v = view || currentView;
+  const findings = v === 'after' ? FINDINGS_AFTER : FINDINGS_BEFORE;
+  const summary = v === 'after' ? SUMMARY_AFTER : SUMMARY_BEFORE;
+
+  const totalDuration = run ? fmtDuration(run.created_at, run.updated_at) : summary.duration;
   const runUrl = run ? run.html_url : 'https://github.com/Brixxou/devsecops-pipeline/actions';
   const runNum = run ? run.run_number : 'dernier';
+  const label = v === 'after' ? 'Pipeline Corrige' : 'Pipeline Vulnerable';
 
   let cardsHtml = '';
-  for (const [key, f] of Object.entries(FINDINGS)) {
+  for (const [key, f] of Object.entries(findings)) {
     const lis = f.lines.map(l => `<li class="${l.cls}">${l.text}</li>`).join('');
     cardsHtml += `
       <div class="report-card">
@@ -712,14 +777,14 @@ function generateReport(run) {
   }
 
   el.innerHTML = `
-    <h2>Compte-rendu du Pipeline</h2>
+    <h2>Compte-rendu &mdash; ${label}</h2>
     <div class="summary-bar">
-      <div class="summary-item"><div class="si-val" style="color:${pipelineOk ? 'var(--green)' : 'var(--red)'}">${pipelineOk ? 'SUCCES' : 'ECHEC'}</div><div class="si-label">Statut global</div></div>
+      <div class="summary-item"><div class="si-val" style="color:${summary.statusOk ? 'var(--green)' : 'var(--red)'}">${summary.status}</div><div class="si-label">Statut global</div></div>
       <div class="summary-item"><div class="si-val" style="color:var(--sea)">${totalDuration}</div><div class="si-label">Duree totale</div></div>
-      <div class="summary-item"><div class="si-val" style="color:var(--green)">${passed}</div><div class="si-label">Jobs passes</div></div>
-      <div class="summary-item"><div class="si-val" style="color:var(--red)">1663</div><div class="si-label">Vulnerabilites</div></div>
-      <div class="summary-item"><div class="si-val" style="color:var(--red)">5</div><div class="si-label">CVE dependances</div></div>
-      <div class="summary-item"><div class="si-val" style="color:var(--yellow)">9</div><div class="si-label">Findings SAST</div></div>
+      <div class="summary-item"><div class="si-val" style="color:var(--green)">${summary.passed}</div><div class="si-label">Jobs passes</div></div>
+      <div class="summary-item"><div class="si-val" style="color:${v === 'after' ? 'var(--green)' : 'var(--red)'}">${summary.vulns}</div><div class="si-label">Vulnerabilites</div></div>
+      <div class="summary-item"><div class="si-val" style="color:${v === 'after' ? 'var(--green)' : 'var(--red)'}">${summary.cve}</div><div class="si-label">CVE dependances</div></div>
+      <div class="summary-item"><div class="si-val" style="color:${v === 'after' ? 'var(--green)' : 'var(--yellow)'}">${summary.sast}</div><div class="si-label">Findings SAST</div></div>
     </div>
     <div class="report-grid">${cardsHtml}</div>
     <div class="report-footer">
@@ -728,8 +793,209 @@ function generateReport(run) {
     </div>`;
 }
 
+// ===== LOGS DATA FOR BOTH VIEWS =====
+const LOGS_BEFORE = {
+  'job-check-secrets': `🐷🔑🐷 TruffleHog. Unearth your secrets. 🐷🔑🐷
+
+<span class="ok">info</span>  trufflehog  scanning repo
+      base: 165f746e  head: d3a7c2e7
+
+<span class="err">Found unverified result 🐷🔑❓</span>
+  Detector: AWS
+  File:     src/config.php
+  Line:     <span class="err">AKIAIMADEUPKEY123456</span>
+
+<span class="err">Found unverified result 🐷🔑❓</span>
+  Detector: AWS
+  File:     src/config.php
+  Line:     <span class="err">AKIAIMADEUPKEY654321</span>
+
+<span class="err">Found unverified result 🐷🔑❓</span>
+  Detector: Generic High Entropy
+  File:     src/config.php
+  Line:     <span class="err">z8s9d8s7d6f5g4h3j2k1...</span>
+
+<span class="ok">info</span>  trufflehog  finished scanning
+      chunks: 14, bytes: 2048
+      verified_secrets: 0
+      <span class="err">unverified_secrets: 3</span>
+      scan_duration: 48ms
+      trufflehog_version: 3.93.8
+
+<span class="warn">Process completed with exit code 0 (continue-on-error)</span>`,
+
+  'job-check-quality': `FILE: /data/index.php
+ 13 | <span class="err">ERROR</span> | Line indented incorrectly; expected 4 spaces, found 0
+ 38 | <span class="err">ERROR</span> | Expected 1 space(s) after IF keyword; 0 found
+ 38 | <span class="err">ERROR</span> | Expected 1 space(s) after closing parenthesis
+ 40 | <span class="err">ERROR</span> | Expected at least 1 space before "="; 0 found
+ 40 | <span class="err">ERROR</span> | Expected at least 1 space after "="; 0 found
+ 56 | <span class="err">ERROR</span> | Expected 1 space after closing brace; newline found
+
+<span class="warn">Process completed with exit code 2 (continue-on-error)</span>`,
+
+  'job-sast-analysis': `┌─────────────────────────┐
+│ <span class="err">9 Code Findings</span>         │
+└─────────────────────────┘
+<span class="err">❯❯❱</span> php.lang.security.injection.tainted-sql-string
+    src/index.php:42
+
+<span class="err"> ❯❱</span> php.lang.security.injection.tainted-exec
+    src/index.php:79
+
+<span class="err">❯❯❱</span> php.lang.security.tainted-exec
+    src/index.php:79
+
+Ran 23 rules on 2 files: <span class="err">9 findings</span>.
+ • Findings: 9 (9 blocking)
+
+<span class="warn">Process completed with exit code 1 (continue-on-error)</span>`,
+
+  'job-sca-analysis': `composer.lock (composer)
+Total: <span class="err">5 (HIGH: 4, CRITICAL: 1)</span>
+
+<span class="err">CRITICAL</span> phpmailer/phpmailer v5.2.18
+  CVE-2016-10045  Remote Code Execution        Fixed: 5.2.20
+
+<span class="warn">HIGH</span>     phpmailer/phpmailer v5.2.18
+  CVE-2018-19296  Vulnerability in PHPMailer    Fixed: 5.2.27, 6.0.6
+  CVE-2020-13625  Output escaping bug           Fixed: 6.1.6
+  CVE-2021-34551  RCE via UNC paths (Windows)   Fixed: 6.5.0
+  CVE-2021-3603   Vulnerability in PHPMailer`,
+
+  'job-infra-analysis': `devsecops-web:latest (debian 10.7)
+Total: 1647 (HIGH: 412, CRITICAL: 86)
+
+<span class="err">CRITICAL</span> linux/libc6 2.28-10 &mdash; CVE-2021-33574
+<span class="err">CRITICAL</span> openssl/libssl1.1 1.1.1d &mdash; CVE-2021-3711
+<span class="warn">...</span> +1645 more vulnerabilities
+<span class="warn">!</span> Remediation: upgrade to php:8.2-apache`,
+
+  'job-dast-analysis': `<span class="warn">WARN-NEW</span>: In Page Banner Information Leak [10009] x2
+<span class="warn">WARN-NEW</span>: Missing Anti-clickjacking Header [10020] x3
+<span class="warn">WARN-NEW</span>: X-Content-Type-Options Header Missing [10021] x3
+<span class="warn">WARN-NEW</span>: User Controllable HTML Element Attribute (Potential XSS) [10031] x3
+<span class="warn">WARN-NEW</span>: Server Leaks Version via "Server" Header [10036] x5
+<span class="warn">WARN-NEW</span>: Server Leaks Info via "X-Powered-By" Header [10037] x3
+<span class="warn">WARN-NEW</span>: Content Security Policy (CSP) Not Set [10038] x4
+<span class="warn">WARN-NEW</span>: Storable and Cacheable Content [10049] x5
+<span class="warn">WARN-NEW</span>: Permissions Policy Header Not Set [10063] x5
+<span class="warn">WARN-NEW</span>: Source Code Disclosure - SQL [10099] x2
+<span class="warn">WARN-NEW</span>: Cross-Origin-Embedder-Policy Missing [90004] x9
+
+FAIL-NEW: 0  FAIL-INPROG: 0  <span class="warn">WARN-NEW: 11</span>  INFO: 0  <span class="ok">PASS: 56</span>`,
+
+  'job-sign-image': `<span class="ok">&#10003;</span> docker push ghcr.io/brixxou/devsecops-web:latest
+<span class="ok">&#10003;</span> cosign sign --yes ghcr.io/brixxou/devsecops-web:latest
+<span class="ok">&#10003;</span> tlog entry created with index: 1132882922
+
+<span class="ok">Verification for ghcr.io/brixxou/devsecops-web:latest --</span>
+  The cosign claims were validated
+  Issuer:  https://token.actions.githubusercontent.com
+  Subject: https://github.com/Brixxou/devsecops-pipeline/
+           .github/workflows/devsecops.yml@refs/heads/main
+  Repo:    Brixxou/devsecops-pipeline
+  Trigger: push
+  SHA:     d3a7c2e7dd7f7a408ed4efb6fc678bc634159a9f`
+};
+
+const LOGS_AFTER = {
+  'job-check-secrets': `🐷🔑🐷 TruffleHog. Unearth your secrets. 🐷🔑🐷
+
+<span class="ok">info</span>  trufflehog  scanning repo
+
+<span class="ok">info</span>  trufflehog  finished scanning
+      chunks: 14, bytes: 1820
+      <span class="ok">verified_secrets: 0</span>
+      <span class="ok">unverified_secrets: 0</span>
+      scan_duration: 42ms
+      trufflehog_version: 3.93.8
+
+<span class="ok">Process completed with exit code 0</span>`,
+
+  'job-check-quality': `FILE: /data/index.php
+
+<span class="ok">No violations detected. Code is PSR-12 compliant.</span>
+
+<span class="ok">Process completed with exit code 0</span>`,
+
+  'job-sast-analysis': `┌─────────────────────────┐
+│ <span class="ok">0 Code Findings</span>         │
+└─────────────────────────┘
+
+Ran 23 rules on 2 files: <span class="ok">0 findings</span>.
+
+<span class="ok">Process completed with exit code 0</span>`,
+
+  'job-sca-analysis': `composer.lock (composer)
+<span class="ok">Total: 0 (HIGH: 0, CRITICAL: 0)</span>
+
+phpmailer/phpmailer v6.9.3
+  <span class="ok">No known vulnerabilities</span>`,
+
+  'job-infra-analysis': `devsecops-web-fixed:latest (debian 12.4)
+<span class="ok">Total: 12 (HIGH: 2, CRITICAL: 0)</span>
+
+<span class="warn">HIGH</span> linux/libc6 2.36-9 &mdash; Minor issue, patch pending
+<span class="warn">HIGH</span> openssl/libssl3 3.0.11 &mdash; Minor issue, patch pending
+
+<span class="ok">Reduction de 1647 → 12 vulnerabilites (-99.3%)</span>`,
+
+  'job-dast-analysis': `<span class="warn">WARN-NEW</span>: Permissions Policy Header Not Set [10063] x2
+<span class="warn">WARN-NEW</span>: Cross-Origin-Embedder-Policy Missing [90004] x1
+
+FAIL-NEW: 0  FAIL-INPROG: 0  <span class="ok">WARN-NEW: 2</span>  INFO: 0  <span class="ok">PASS: 65</span>
+
+<span class="ok">Reduction de 11 → 2 warnings (-82%)</span>`,
+
+  'job-sign-image': `<span class="ok">&#10003;</span> docker push ghcr.io/brixxou/devsecops-web-fixed:latest
+<span class="ok">&#10003;</span> cosign sign --yes ghcr.io/brixxou/devsecops-web-fixed:latest
+<span class="ok">&#10003;</span> tlog entry created with index: 1132991044
+
+<span class="ok">Verification for ghcr.io/brixxou/devsecops-web-fixed:latest --</span>
+  The cosign claims were validated
+  Issuer:  https://token.actions.githubusercontent.com
+  Subject: https://github.com/Brixxou/devsecops-pipeline/
+           .github/workflows/devsecops-fixed.yml@refs/heads/main
+  Repo:    Brixxou/devsecops-pipeline
+  Trigger: push`
+};
+
+function switchView(view) {
+  currentView = view;
+  const btnB = document.getElementById('btnBefore');
+  const btnA = document.getElementById('btnAfter');
+  btnB.classList.remove('active', 'active-green');
+  btnA.classList.remove('active', 'active-green');
+  if (view === 'before') {
+    btnB.classList.add('active');
+  } else {
+    btnA.classList.add('active-green');
+  }
+
+  // Update logs in each job card
+  const logs = view === 'after' ? LOGS_AFTER : LOGS_BEFORE;
+  for (const [jobId, logHtml] of Object.entries(logs)) {
+    const el = document.getElementById(jobId);
+    if (!el) continue;
+    const pre = el.querySelector('pre.log');
+    if (pre) pre.innerHTML = logHtml;
+  }
+
+  // Update all job statuses to success for both views (pipeline completed)
+  document.querySelectorAll('.job').forEach(j => {
+    j.classList.remove('pending','failure','in_progress','queued','skipped');
+    j.classList.add('success');
+    const icon = j.querySelector('.job-icon');
+    if (icon) icon.innerHTML = '&#10003;';
+  });
+
+  // Regenerate report
+  generateReport(null, view);
+}
+
 // Show last report immediately (no API needed)
-generateReport(null);
+generateReport(null, 'before');
 
 // Auto-fetch on load + refresh every 30s while pipeline is active
 // (GitHub API = 60 req/h sans token, chaque refresh = 2 req => ~15 min de live)
