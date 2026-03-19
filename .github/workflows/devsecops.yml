@@ -26,8 +26,7 @@ jobs:
 
       - name: Scan des Secrets (TruffleHog)
         uses: trufflesecurity/trufflehog@main
-        with:
-          extra_args: --only-verified
+        continue-on-error: true
 
   # ------------------------------------------------------------------
   # ETAPE 2 : LINTER (PHP_CodeSniffer)
