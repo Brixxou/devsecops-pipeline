@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline DevSecOps - Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fafbfe;--bg2:#ffffff;--bg3:#f1f5f9;
+  --text:#1e293b;--muted:#64748b;--dim:#94a3b8;
+  --sea:#0369a1;--sky:#0ea5e9;
+  --green:#059669;--green-bg:#ecfdf5;--green-border:#6ee7b7;
+  --red:#dc2626;--red-bg:#fef2f2;--red-border:#fca5a5;
+  --yellow:#d97706;--yellow-bg:#fffbeb;--yellow-border:#fcd34d;
+  --blue-bg:#eff6ff;--blue-border:#93c5fd;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;
+  --shadow:0 1px 3px rgba(0,0,0,0.04),0 4px 16px rgba(0,0,0,0.05);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.08);
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;-webkit-font-smoothing:antialiased}
+
+header{text-align:center;margin-bottom:2.5rem}
+header h1{font-size:1.8rem;font-weight:800;letter-spacing:-0.03em}
+header p{color:var(--muted);margin-top:0.3rem;font-size:0.9rem}
+.repo-link{display:inline-block;margin-top:0.6rem;padding:0.35rem 1rem;background:var(--bg3);border:1px solid #e2e8f0;border-radius:2rem;font-size:0.78rem;color:var(--sea);text-decoration:none;font-weight:500;transition:all 0.2s}
+.repo-link:hover{background:var(--sea);color:#fff;border-color:var(--sea)}
+.status-bar{display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-top:1rem;font-size:0.8rem}
+.status-dot{width:8px;height:8px;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* ===== PIPELINE GRAPH ===== */
+.pipeline-graph{
+  display:flex;flex-direction:column;align-items:center;gap:0;
+  max-width:72rem;margin:0 auto;position:relative;
+}
+.pipe-row{display:flex;align-items:flex-start;justify-content:center;gap:2rem;width:100%;flex-wrap:wrap}
+.pipe-connector{display:flex;flex-direction:column;align-items:center;padding:0.5rem 0}
+.pipe-line{width:2px;height:1.5rem;background:#e2e8f0;position:relative}
+.pipe-line.active{background:var(--green-border)}
+.pipe-line.fail{background:var(--red-border)}
+
+/* ===== JOB NODE ===== */
+.job{
+  background:var(--bg2);border:2px solid #e2e8f0;border-radius:1rem;
+  padding:1.2rem 1.5rem;min-width:clamp(14rem,20vw,18rem);max-width:22rem;
+  cursor:pointer;transition:all 0.3s;position:relative;text-align:left;
+  box-shadow:var(--shadow);
+}
+.job:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.job.success{border-color:var(--green-border);background:var(--green-bg)}
+.job.failure{border-color:var(--red-border);background:var(--red-bg)}
+.job.in_progress{border-color:var(--yellow-border);background:var(--yellow-bg)}
+.job.queued{border-color:var(--blue-border);background:var(--blue-bg)}
+.job.skipped{border-color:#e2e8f0;background:var(--bg3);opacity:0.7}
+
+.job-header{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.4rem}
+.job-icon{width:1.8rem;height:1.8rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;flex-shrink:0}
+.job.success .job-icon{background:#d1fae5;color:var(--green)}
+.job.failure .job-icon{background:#fee2e2;color:var(--red)}
+.job.in_progress .job-icon{background:#fef3c7;color:var(--yellow);animation:spin 1.5s linear infinite}
+.job.queued .job-icon{background:#dbeafe;color:#3b82f6}
+.job.skipped .job-icon{background:#f1f5f9;color:var(--dim)}
+.job.pending .job-icon{background:#f1f5f9;color:var(--dim)}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+.job-name{font-weight:700;font-size:0.88rem;letter-spacing:-0.01em}
+.job-desc{font-size:0.75rem;color:var(--muted);margin-top:0.1rem}
+.job-duration{font-size:0.7rem;color:var(--dim);margin-top:0.5rem;font-family:'JetBrains Mono',monospace}
+.job-badge{position:absolute;top:-0.5rem;right:0.8rem;padding:0.15rem 0.6rem;border-radius:1rem;font-size:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em}
+.job.success .job-badge{background:#d1fae5;color:var(--green)}
+.job.failure .job-badge{background:#fee2e2;color:var(--red)}
+.job.in_progress .job-badge{background:#fef3c7;color:var(--yellow)}
+
+/* ===== EXPAND DETAIL ===== */
+.job-detail{
+  display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(0,0,0,0.06);
+  font-size:0.78rem;line-height:1.7;
+}
+.job.expanded .job-detail{display:block}
+.job.expanded{max-width:40rem;min-width:clamp(20rem,35vw,36rem)}
+
+.step{display:flex;align-items:flex-start;gap:0.5rem;padding:0.4rem 0}
+.step-icon{width:1.2rem;height:1.2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;flex-shrink:0;margin-top:0.15rem}
+.step-ok .step-icon{background:#d1fae5;color:var(--green)}
+.step-fail .step-icon{background:#fee2e2;color:var(--red)}
+.step-skip .step-icon{background:#f1f5f9;color:var(--dim)}
+.step-run .step-icon{background:#fef3c7;color:var(--yellow);animation:spin 1.5s linear infinite}
+.step-name{font-weight:500}
+.step-time{color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:0.7rem;margin-left:auto;white-space:nowrap}
+
+.tool-info{
+  background:var(--bg3);border-radius:0.5rem;padding:0.8rem 1rem;margin-top:0.6rem;
+  font-size:0.75rem;color:var(--muted);line-height:1.6;
+}
+.tool-info strong{color:var(--text)}
+pre.log{
+  background:#0f172a;color:#e2e8f0;border-radius:0.5rem;padding:0.8rem 1rem;
+  margin-top:0.6rem;font-family:'JetBrains Mono',monospace;font-size:0.68rem;
+  line-height:1.6;overflow-x:auto;max-height:12rem;overflow-y:auto;
+}
+pre.log .ok{color:#34d399}
+pre.log .warn{color:#fbbf24}
+pre.log .err{color:#f87171}
+
+/* ===== LEGEND ===== */
+.legend{display:flex;align-items:center;justify-content:center;gap:1.5rem;margin:2rem 0 1rem;font-size:0.75rem;color:var(--muted);flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:0.4rem}
+.legend-dot{width:10px;height:10px;border-radius:50%;border:2px solid}
+.legend-dot.l-ok{background:var(--green-bg);border-color:var(--green-border)}
+.legend-dot.l-fail{background:var(--red-bg);border-color:var(--red-border)}
+.legend-dot.l-run{background:var(--yellow-bg);border-color:var(--yellow-border)}
+.legend-dot.l-queue{background:var(--blue-bg);border-color:var(--blue-border)}
+.legend-dot.l-skip{background:var(--bg3);border-color:#e2e8f0}
+
+.refresh-btn{
+  display:inline-flex;align-items:center;gap:0.4rem;
+  padding:0.4rem 1rem;background:var(--bg2);border:1px solid #e2e8f0;
+  border-radius:2rem;font-size:0.78rem;color:var(--sea);cursor:pointer;
+  font-family:inherit;font-weight:500;transition:all 0.2s;
+}
+.refresh-btn:hover{background:var(--sea);color:#fff;border-color:var(--sea)}
+.refresh-btn.loading{opacity:0.6;pointer-events:none}
+
+@media(max-width:640px){
+  .pipe-row{flex-direction:column;align-items:center;gap:0}
+  .job{min-width:90%;max-width:90%}
+  body{padding:1rem}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pipeline DevSecOps <span style="color:var(--sky)">Live</span></h1>
+  <p>Visualisation interactive du workflow GitHub Actions</p>
+  <a class="repo-link" href="https://github.com/Brixxou/devsecops-pipeline/actions" target="_blank" id="repo-link">Voir sur GitHub Actions</a>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot l-ok"></span> Succes</span>
+    <span class="legend-item"><span class="legend-dot l-fail"></span> Echec</span>
+    <span class="legend-item"><span class="legend-dot l-run"></span> En cours</span>
+    <span class="legend-item"><span class="legend-dot l-queue"></span> En attente</span>
+    <span class="legend-item"><span class="legend-dot l-skip"></span> Ignore</span>
+    <button class="refresh-btn" id="refreshBtn" onclick="fetchPipeline()">Actualiser</button>
+  </div>
+  <div class="status-bar" id="statusBar">
+    <span class="status-dot" style="background:var(--dim)"></span>
+    <span>Chargement...</span>
+  </div>
+</header>
+
+<div class="pipeline-graph" id="graph">
+
+  <!-- ROW 1: Secrets + Linter (parallel) -->
+  <div class="pipe-row">
+    <div class="job pending" id="job-check-secrets" onclick="toggle(this)">
+      <span class="job-badge">Etape 1</span>
+      <div class="job-header">
+        <div class="job-icon">&#9679;</div>
+        <div>
+          <div class="job-name">Secrets</div>
+          <div class="job-desc">TruffleHog &mdash; Scan de l'historique Git</div>
+        </div>
+      </div>
+      <div class="job-duration" id="dur-check-secrets"></div>
+      <div class="job-detail">
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Recuperation du code</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Scan des Secrets (TruffleHog)</span></div>
+        <div class="tool-info">
+          <strong>TruffleHog</strong> scanne chaque commit de l'historique Git pour detecter des cles API, tokens ou mots de passe exposes. Le flag <code>--only-verified</code> ne bloque que sur les secrets confirmes actifs.
+        </div>
+        <pre class="log"><span class="ok">&#10003;</span> Scanning filesystem...
+<span class="ok">&#10003;</span> Found 0 verified secrets
+<span class="warn">!</span> Found 2 unverified secrets (AKIA patterns in config.php)
+<span class="ok">&#10003;</span> Exit code: 0 (only verified secrets block)</pre>
+      </div>
+    </div>
+
+    <div class="job pending" id="job-check-quality" onclick="toggle(this)">
+      <span class="job-badge">Etape 2</span>
+      <div class="job-header">
+        <div class="job-icon">&#9679;</div>
+        <div>
+          <div class="job-name">Linter</div>
+          <div class="job-desc">PHP_CodeSniffer &mdash; Conventions PSR-12</div>
+        </div>
+      </div>
+      <div class="job-duration" id="dur-check-quality"></div>
+      <div class="job-detail">
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Recuperation du code</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Linter PHP (PSR-12)</span></div>
+        <div class="tool-info">
+          <strong>PHP_CodeSniffer</strong> verifie la syntaxe et le style du code PHP selon le standard PSR-12. Un code propre et lisible reduit le risque de bugs et donc de vulnerabilites.
+        </div>
+        <pre class="log"><span class="warn">!</span> FILE: /data/index.php
+<span class="err">ERROR</span> Line 13: Line indented incorrectly; expected 4 spaces, found 0
+<span class="err">ERROR</span> Line 39: Expected 1 space after IF keyword
+<span class="err">ERROR</span> Line 40: Opening brace should be on the same line
+<span class="warn">WARN</span>  Line 52: Whitespace found at end of line
+<span class="warn">!</span> Found 12 errors and 3 warnings (continue-on-error)</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipe-connector"><div class="pipe-line" id="line-1"></div></div>
+
+  <!-- ROW 2: SAST + SCA (parallel) -->
+  <div class="pipe-row">
+    <div class="job pending" id="job-sast-analysis" onclick="toggle(this)">
+      <span class="job-badge">Etape 3</span>
+      <div class="job-header">
+        <div class="job-icon">&#9679;</div>
+        <div>
+          <div class="job-name">SAST</div>
+          <div class="job-desc">Semgrep &mdash; Analyse statique du code source</div>
+        </div>
+      </div>
+      <div class="job-duration" id="dur-sast-analysis"></div>
+      <div class="job-detail">
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Recuperation du code</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Scan SAST (Semgrep)</span></div>
+        <div class="tool-info">
+          <strong>Semgrep</strong> analyse le code source sans l'executer (boite blanche). Il detecte les patterns de vulnerabilites connus : injections SQL, XSS, RCE. C'est le coeur du Shift Left.
+        </div>
+        <pre class="log"><span class="err">&#10007;</span> php.lang.security.injection.tainted-sql-string
+  src/index.php:42 &mdash; SQL injection via user input
+<span class="err">&#10007;</span> php.lang.security.xss.direct-echo-get
+  src/index.php:30 &mdash; XSS: echo $search without escaping (x4)
+<span class="err">&#10007;</span> php.lang.security.exec.command-injection
+  src/index.php:79 &mdash; RCE: system() with user input (x2)
+<span class="warn">!</span> 9 findings, 7 errors (continue-on-error)</pre>
+      </div>
+    </div>
+
+    <div class="job pending" id="job-sca-analysis" onclick="toggle(this)">
+      <span class="job-badge">Etape 4</span>
+      <div class="job-header">
+        <div class="job-icon">&#9679;</div>
+        <div>
+          <div class="job-name">SCA</div>
+          <div class="job-desc">Trivy FS &mdash; Vulnerabilites des dependances</div>
+        </div>
+      </div>
+      <div class="job-duration" id="dur-sca-analysis"></div>
+      <div class="job-detail">
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Recuperation du code</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Installation des dependances</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Scan SCA (Trivy FS)</span></div>
+        <div class="tool-info">
+          <strong>Trivy FS</strong> analyse les dependances declarees (composer.lock) et les compare avec les bases de CVE connues. Il identifie les bibliotheques obsoletes et vulnerables.
+        </div>
+        <pre class="log">composer.lock (composer)
+Total: 3 (HIGH: 1, CRITICAL: 2)
+
+<span class="err">CRITICAL</span> phpmailer/phpmailer 5.2.18
+  CVE-2016-10033 &mdash; Remote code execution
+  CVE-2016-10045 &mdash; Mail header injection
+<span class="warn">HIGH</span>     phpmailer/phpmailer 5.2.18
+  CVE-2017-5223  &mdash; Local file disclosure</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipe-connector"><div class="pipe-line" id="line-2"></div></div>
+
+  <!-- ROW 3: Infra -->
+  <div class="pipe-row">
+    <div class="job pending" id="job-infra-analysis" onclick="toggle(this)">
+      <span class="job-badge">Etape 5</span>
+      <div class="job-header">
+        <div class="job-icon">&#9679;</div>
+        <div>
+          <div class="job-name">Infrastructure</div>
+          <div class="job-desc">Trivy Image &mdash; Scan de l'image Docker</div>
+        </div>
+      </div>
+      <div class="job-duration" id="dur-infra-analysis"></div>
+      <div class="job-detail">
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Recuperation du code</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Build de l'image Docker</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Scan Infrastructure (Trivy Image)</span></div>
+        <div class="tool-info">
+          <strong>Trivy Image</strong> scanne l'image Docker construite pour detecter les vulnerabilites du systeme d'exploitation sous-jacent. L'image <code>php:7.2-apache</code> (Debian 10) est obsolete.
+        </div>
+        <pre class="log">devsecops-web:latest (debian 10.7)
+Total: 1647 (HIGH: 412, CRITICAL: 86)
+
+<span class="err">CRITICAL</span> linux/libc6 2.28-10 &mdash; CVE-2021-33574
+<span class="err">CRITICAL</span> openssl/libssl1.1 1.1.1d &mdash; CVE-2021-3711
+<span class="warn">...</span> +1645 more vulnerabilities
+<span class="warn">!</span> Remediation: upgrade to php:8.2-apache</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipe-connector"><div class="pipe-line" id="line-3"></div></div>
+
+  <!-- ROW 4: DAST -->
+  <div class="pipe-row">
+    <div class="job pending" id="job-dast-analysis" onclick="toggle(this)">
+      <span class="job-badge">Etape 6</span>
+      <div class="job-header">
+        <div class="job-icon">&#9679;</div>
+        <div>
+          <div class="job-name">DAST</div>
+          <div class="job-desc">ZAP Baseline &mdash; Test boite noire en runtime</div>
+        </div>
+      </div>
+      <div class="job-duration" id="dur-dast-analysis"></div>
+      <div class="job-detail">
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Recuperation du code</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Demarrage de la stack applicative</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Scan DAST (ZAP Baseline)</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Arret de la stack</span></div>
+        <div class="tool-info">
+          <strong>OWASP ZAP</strong> lance l'application complete et la teste de l'exterieur comme un attaquant. Il detecte les vulnerabilites en runtime : XSS, injection SQL, headers manquants.
+        </div>
+        <pre class="log">WARN-NEW: X-Frame-Options Header Not Set [10020]
+WARN-NEW: Missing Anti-clickjacking Header [10020]
+<span class="err">FAIL-NEW</span>: Cross Site Scripting (Reflected) [40012] x4
+<span class="err">FAIL-NEW</span>: SQL Injection [40018] x1
+<span class="warn">WARN-NEW</span>: Cookie without SameSite Attribute [10054]
+<span class="warn">WARN-NEW</span>: Server Leaks Information [10036]
+<span class="ok">PASS</span>: HTTPS check (N/A for localhost)</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipe-connector"><div class="pipe-line" id="line-4"></div></div>
+
+  <!-- ROW 5: Sign -->
+  <div class="pipe-row">
+    <div class="job pending" id="job-sign-image" onclick="toggle(this)">
+      <span class="job-badge" style="background:var(--purple-bg);color:var(--purple)">Etape 7 &mdash; Partie 10</span>
+      <div class="job-header">
+        <div class="job-icon">&#9679;</div>
+        <div>
+          <div class="job-name">Signature d'image</div>
+          <div class="job-desc">Cosign &mdash; Signature cryptographique keyless</div>
+        </div>
+      </div>
+      <div class="job-duration" id="dur-sign-image"></div>
+      <div class="job-detail">
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Recuperation du code</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Installation de Cosign</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Login GitHub Container Registry</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Build &amp; Push vers GHCR</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Signature keyless (Cosign)</span></div>
+        <div class="step step-ok"><div class="step-icon">&#10003;</div><span class="step-name">Verification de la signature</span></div>
+        <div class="tool-info">
+          <strong>Cosign (Sigstore)</strong> signe l'image Docker avec une identite OIDC liee au workflow GitHub Actions. Pas besoin de gerer des cles : la signature est verifiable publiquement et garantit l'integrite de l'image deployee.
+        </div>
+        <pre class="log"><span class="ok">&#10003;</span> Pushing to ghcr.io/brixxou/devsecops-web:latest
+<span class="ok">&#10003;</span> Signing with OIDC identity...
+<span class="ok">&#10003;</span> tlog entry created with index: 84291037
+<span class="ok">&#10003;</span> Verification OK
+  Issuer: https://token.actions.githubusercontent.com
+  Subject: https://github.com/Brixxou/devsecops-pipeline</pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const OWNER = 'Brixxou';
+const REPO = 'devsecops-pipeline';
+
+const JOB_MAP = {
+  'check-secrets': 'job-check-secrets',
+  'check-quality': 'job-check-quality',
+  'sast-analysis': 'job-sast-analysis',
+  'sca-analysis': 'job-sca-analysis',
+  'infra-analysis': 'job-infra-analysis',
+  'dast-analysis': 'job-dast-analysis',
+  'sign-image': 'job-sign-image'
+};
+
+function toggle(el) {
+  el.classList.toggle('expanded');
+}
+
+function setStatus(el, conclusion, status) {
+  el.classList.remove('success','failure','in_progress','queued','pending','skipped');
+  if (conclusion === 'success') el.classList.add('success');
+  else if (conclusion === 'failure') el.classList.add('failure');
+  else if (conclusion === 'skipped') el.classList.add('skipped');
+  else if (status === 'in_progress') el.classList.add('in_progress');
+  else if (status === 'queued' || status === 'waiting') el.classList.add('queued');
+  else el.classList.add('pending');
+
+  // Update icon
+  const icon = el.querySelector('.job-icon');
+  if (conclusion === 'success') icon.innerHTML = '&#10003;';
+  else if (conclusion === 'failure') icon.innerHTML = '&#10007;';
+  else if (conclusion === 'skipped') icon.innerHTML = '&#8722;';
+  else if (status === 'in_progress') icon.innerHTML = '&#9881;';
+  else icon.innerHTML = '&#9679;';
+}
+
+function fmtDuration(start, end) {
+  if (!start) return '';
+  const s = new Date(start);
+  const e = end ? new Date(end) : new Date();
+  const diff = Math.floor((e - s) / 1000);
+  if (diff < 60) return diff + 's';
+  return Math.floor(diff / 60) + 'm ' + (diff % 60) + 's';
+}
+
+async function fetchPipeline() {
+  const btn = document.getElementById('refreshBtn');
+  const bar = document.getElementById('statusBar');
+  btn.classList.add('loading');
+  btn.textContent = 'Chargement...';
+
+  try {
+    // Get latest run
+    const runsRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/runs?per_page=1`);
+    const runsData = await runsRes.json();
+
+    if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
+      bar.innerHTML = '<span class="status-dot" style="background:var(--dim)"></span><span>Aucun run trouve</span>';
+      return;
+    }
+
+    const run = runsData.workflow_runs[0];
+    const runUrl = run.html_url;
+    document.getElementById('repo-link').href = runUrl;
+
+    // Status bar
+    const runStatus = run.status;
+    const runConc = run.conclusion;
+    let statusColor = 'var(--dim)';
+    let statusText = 'En attente';
+    if (runStatus === 'completed' && runConc === 'success') { statusColor = 'var(--green)'; statusText = 'Pipeline terminee avec succes'; }
+    else if (runStatus === 'completed' && runConc === 'failure') { statusColor = 'var(--red)'; statusText = 'Pipeline terminee avec erreurs'; }
+    else if (runStatus === 'in_progress') { statusColor = 'var(--yellow)'; statusText = 'Pipeline en cours...'; }
+    else if (runStatus === 'queued') { statusColor = '#3b82f6'; statusText = 'Pipeline en file d\'attente'; }
+    bar.innerHTML = `<span class="status-dot" style="background:${statusColor}"></span><span>${statusText} &mdash; ${fmtDuration(run.created_at, run.updated_at)}</span>`;
+
+    // Get jobs
+    const jobsRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/runs/${run.id}/jobs`);
+    const jobsData = await jobsRes.json();
+
+    for (const job of jobsData.jobs) {
+      const slug = job.name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+      // Try to match by known names
+      let elId = null;
+      for (const [key, val] of Object.entries(JOB_MAP)) {
+        if (job.name.toLowerCase().includes(key.replace('-', '')) || slug.includes(key)) {
+          elId = val;
+          break;
+        }
+      }
+      // Fallback: try matching by partial name
+      if (!elId) {
+        if (job.name.toLowerCase().includes('secret')) elId = 'job-check-secrets';
+        else if (job.name.toLowerCase().includes('quality') || job.name.toLowerCase().includes('lint')) elId = 'job-check-quality';
+        else if (job.name.toLowerCase().includes('sast') || job.name.toLowerCase().includes('semgrep')) elId = 'job-sast-analysis';
+        else if (job.name.toLowerCase().includes('sca')) elId = 'job-sca-analysis';
+        else if (job.name.toLowerCase().includes('infra')) elId = 'job-infra-analysis';
+        else if (job.name.toLowerCase().includes('dast') || job.name.toLowerCase().includes('zap')) elId = 'job-dast-analysis';
+        else if (job.name.toLowerCase().includes('sign')) elId = 'job-sign-image';
+      }
+
+      if (elId) {
+        const el = document.getElementById(elId);
+        if (el) {
+          setStatus(el, job.conclusion, job.status);
+          const durEl = document.getElementById('dur-' + elId.replace('job-', ''));
+          if (durEl) durEl.textContent = job.started_at ? fmtDuration(job.started_at, job.completed_at) : '';
+        }
+      }
+    }
+
+    // Update connector lines
+    updateLines(jobsData.jobs);
+
+  } catch (e) {
+    bar.innerHTML = `<span class="status-dot" style="background:var(--red)"></span><span>Erreur : ${e.message} &mdash; API GitHub limitee sans token</span>`;
+  } finally {
+    btn.classList.remove('loading');
+    btn.textContent = 'Actualiser';
+  }
+}
+
+function updateLines(jobs) {
+  const lines = ['line-1','line-2','line-3','line-4'];
+  const jobOrder = [
+    ['check-secrets','check-quality'],
+    ['sast-analysis','sca-analysis'],
+    ['infra-analysis'],
+    ['dast-analysis']
+  ];
+  for (let i = 0; i < lines.length; i++) {
+    const line = document.getElementById(lines[i]);
+    if (!line) continue;
+    const prev = jobOrder[i];
+    const allDone = prev.every(name => {
+      const j = jobs.find(j => j.name.toLowerCase().includes(name.replace('-','')));
+      return j && j.conclusion;
+    });
+    const anyFail = prev.some(name => {
+      const j = jobs.find(j => j.name.toLowerCase().includes(name.replace('-','')));
+      return j && j.conclusion === 'failure';
+    });
+    line.classList.remove('active','fail');
+    if (allDone && !anyFail) line.classList.add('active');
+    else if (anyFail) line.classList.add('fail');
+  }
+}
+
+// Auto-fetch on load + refresh every 15s if in_progress
+fetchPipeline();
+setInterval(() => {
+  const bar = document.getElementById('statusBar');
+  if (bar && bar.textContent.includes('en cours')) fetchPipeline();
+}, 15000);
+</script>
+</body>
+</html>
