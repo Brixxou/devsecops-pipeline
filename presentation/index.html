@@ -21,7 +21,7 @@
   --shadow:0 1px 3px rgba(0,0,0,0.04),0 4px 16px rgba(0,0,0,0.04);
   --shadow-lg:0 4px 24px rgba(0,0,0,0.06),0 1px 4px rgba(0,0,0,0.04);
 }
-html{font-size:clamp(13px,1.4vw,17px);scroll-behavior:smooth}
+html{font-size:clamp(13px,1.4vw,17px);scroll-behavior:smooth;scroll-snap-type:y mandatory}
 body{
   font-family:'Inter',system-ui,-apple-system,sans-serif;
   background:var(--bg);color:var(--text);
@@ -34,6 +34,8 @@ body{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:clamp(3rem,6vh,6rem) clamp(2rem,10vw,10rem);
   position:relative;
+  scroll-snap-align:start;
+  scroll-snap-stop:always;
 }
 .slide:nth-child(even){background:#fff}
 .slide:nth-child(odd){background:var(--bg)}
@@ -241,6 +243,31 @@ nav .progress{height:2px;background:linear-gradient(90deg,var(--sea),var(--sky))
   background:var(--bg3);border:1px solid #e2e8f0;border-radius:0.25rem;
   padding:0.1rem 0.4rem;font-family:'JetBrains Mono',monospace;font-size:0.8em;
 }
+
+/* ===== SIDE DOTS NAV ===== */
+.dots-nav{
+  position:fixed;right:1.2rem;top:50%;transform:translateY(-50%);z-index:100;
+  display:flex;flex-direction:column;gap:0.5rem;
+}
+.dots-nav a{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--dim);opacity:0.3;
+  transition:all 0.3s;display:block;
+  text-decoration:none;
+}
+.dots-nav a:hover{opacity:0.6;transform:scale(1.3)}
+.dots-nav a.active{opacity:1;background:var(--sea);transform:scale(1.3)}
+@media(max-width:640px){.dots-nav{right:0.5rem;gap:0.35rem}.dots-nav a{width:7px;height:7px}}
+
+/* ===== SLIDE COUNTER ===== */
+.slide-counter{
+  position:fixed;bottom:2.5rem;right:1.2rem;z-index:100;
+  font-size:0.75rem;font-weight:600;color:var(--dim);
+  font-variant-numeric:tabular-nums;
+  background:rgba(250,251,254,0.85);backdrop-filter:blur(8px);
+  padding:0.25rem 0.6rem;border-radius:1rem;border:1px solid rgba(0,0,0,0.06);
+}
+.slide-counter span{color:var(--sea)}
 </style>
 </head>
 <body>
@@ -897,21 +924,71 @@ nav .progress{height:2px;background:linear-gradient(90deg,var(--sea),var(--sky))
   <span class="snum">24</span>
 </div>
 
+<div class="dots-nav" id="dotsNav"></div>
+<div class="slide-counter" id="slideCounter"><span>1</span> / 24</div>
+
 <div class="foot">
-  <kbd>&darr;</kbd> Scroll &nbsp;&bull;&nbsp; <kbd>F</kbd> Plein ecran
+  <kbd>&uarr;</kbd><kbd>&darr;</kbd> Navigation &nbsp;&bull;&nbsp; <kbd>F</kbd> Plein ecran
 </div>
 
 <script>
-const progress=document.getElementById('progress');
-window.addEventListener('scroll',()=>{
-  const h=document.documentElement.scrollHeight-window.innerHeight;
-  progress.style.width=h>0?(window.scrollY/h)*100+'%':'0%';
+const slides = document.querySelectorAll('.slide');
+const progress = document.getElementById('progress');
+const dotsNav = document.getElementById('dotsNav');
+const counter = document.getElementById('slideCounter');
+const total = slides.length;
+let current = 0;
+
+// Build dots
+slides.forEach((s, i) => {
+  const dot = document.createElement('a');
+  dot.href = '#s' + (i + 1);
+  dot.title = 'Slide ' + (i + 1);
+  if (i === 0) dot.classList.add('active');
+  dotsNav.appendChild(dot);
 });
-document.addEventListener('keydown',e=>{
-  if(e.key==='f'||e.key==='F'){
-    if(!document.fullscreenElement)document.documentElement.requestFullscreen();
+const dots = dotsNav.querySelectorAll('a');
+
+// Detect current slide on scroll
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const idx = Array.from(slides).indexOf(entry.target);
+      if (idx !== -1) {
+        current = idx;
+        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        counter.innerHTML = '<span>' + (idx + 1) + '</span> / ' + total;
+        const h = document.documentElement.scrollHeight - window.innerHeight;
+        progress.style.width = h > 0 ? (window.scrollY / h) * 100 + '%' : '0%';
+      }
+    }
+  });
+}, { threshold: 0.5 });
+
+slides.forEach(s => observer.observe(s));
+
+// Progress bar on scroll
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  progress.style.width = h > 0 ? (window.scrollY / h) * 100 + '%' : '0%';
+});
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'f' || e.key === 'F') {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
     else document.exitFullscreen();
   }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+    e.preventDefault();
+    if (current < total - 1) slides[current + 1].scrollIntoView({ behavior: 'smooth' });
+  }
+  if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    if (current > 0) slides[current - 1].scrollIntoView({ behavior: 'smooth' });
+  }
+  if (e.key === 'Home') { e.preventDefault(); slides[0].scrollIntoView({ behavior: 'smooth' }); }
+  if (e.key === 'End') { e.preventDefault(); slides[total - 1].scrollIntoView({ behavior: 'smooth' }); }
 });
 </script>
 </body>
